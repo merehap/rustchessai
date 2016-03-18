@@ -137,7 +137,7 @@ impl GameState {
                         &[(0, direction)],
                         Some(max_moves),
                         // Pawns can't take when moving forward.
-                        TakeOption::CannotTake
+                        StopOption::BeforeEnemy
                         ));
 
                 // Pawns can take pieces on diagonals immediately in front of them.
@@ -145,7 +145,7 @@ impl GameState {
                         source,
                         &[(-1, direction), (1, direction)],
                         Some(1),
-                        TakeOption::OnlyTake
+                        StopOption::OnEmpty
                         ));
 
                 // TODO: Add en passant
@@ -163,7 +163,7 @@ impl GameState {
                         source,
                         &[(-1, -1), (-1, 1), (1, -1), (1, 1)],
                         None,
-                        TakeOption::CanTake
+                        StopOption::OnEnemy
                         ));
             },
 
@@ -172,7 +172,7 @@ impl GameState {
                         source,
                         &[(-1, 0), (0, -1), (0, 1), (1, 0)],
                         None,
-                        TakeOption::CanTake
+                        StopOption::OnEnemy
                         ));
             },
 
@@ -181,7 +181,7 @@ impl GameState {
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
                         None,
-                        TakeOption::CanTake
+                        StopOption::OnEnemy
                         ));
 
             },
@@ -190,7 +190,7 @@ impl GameState {
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
                         Some(1),
-                        TakeOption::CanTake
+                        StopOption::OnEnemy
                         ));
 
                 //TODO: Add castling.
@@ -205,7 +205,7 @@ impl GameState {
             source: &Position,
             dirs: &[(i8, i8)],
             max_moves: Option<u8>,
-            take_option: TakeOption) -> Vec<Position> {
+            take_option: StopOption) -> Vec<Position> {
 
         let source_piece = &self.get_piece(source).unwrap();
 
@@ -228,10 +228,10 @@ impl GameState {
                 }
                 
                 match (self.get_occupation_status(source_piece, &dest), take_option) {
-                    (OccupationStatus::Empty   , TakeOption::OnlyTake ) => break,
+                    (OccupationStatus::Empty   , StopOption::OnEmpty ) => break,
                     (OccupationStatus::Empty   , _                    ) => dests.push(dest.clone()),
-                    (OccupationStatus::Enemy   , TakeOption::OnlyTake ) => dests.push(dest.clone()),
-                    (OccupationStatus::Enemy   , TakeOption::CanTake  ) => { dests.push(dest.clone()); break; },
+                    (OccupationStatus::Enemy   , StopOption::OnEmpty ) => dests.push(dest.clone()),
+                    (OccupationStatus::Enemy   , StopOption::OnEnemy  ) => { dests.push(dest.clone()); break; },
                     (_                         , _                    ) => break,
                 }
             }
@@ -266,10 +266,10 @@ enum OccupationStatus {
 }
 
 #[derive(PartialEq, Clone, Copy)]
-enum TakeOption {
-    CanTake,
-    OnlyTake,
-    CannotTake,
+enum StopOption {
+    OnEnemy,
+    BeforeEnemy,
+    OnEmpty,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
