@@ -4,8 +4,7 @@
 use std::collections::HashSet;
 use std::io;
 
-fn main() {
-    let mut game_state = GameState::opening_state();
+fn main() { let mut game_state = GameState::opening_state();
     loop {
         println!("{}", game_state.format());
         game_state.play_turn(Box::new(human_player));
@@ -25,6 +24,7 @@ struct GameState {
     current_player: Color,
     white_state: PlayerState,
     black_state: PlayerState,
+    en_passant_target: Option<Position>,
 }
 
 impl GameState {
@@ -52,6 +52,7 @@ impl GameState {
             current_player: Color::White,
             white_state: initial_player_state(),
             black_state: initial_player_state(),
+            en_passant_target: Option::None,
         }
     }
 
@@ -70,8 +71,9 @@ impl GameState {
     }
 
     fn play_turn(&mut self, player_brain: Box<Fn(&GameState) -> Move>) {
-        let player_move = player_brain(&self.clone()); 
+        let player_move = player_brain(&self.clone());
         self.move_piece(&player_move);
+
         self.current_player = if self.current_player == Color::White {
             Color::Black
         } else {
@@ -83,10 +85,25 @@ impl GameState {
         self.board[position.row as usize][position.column as usize]
     }
 
+    fn set_piece(&mut self, piece: &Option<Piece>, position: &Position) {
+        self.board[position.row as usize][position.column as usize] = *piece;
+    }
+
     fn move_piece(&mut self, player_move: &Move) {
-        self.board[player_move.destination.row as usize][player_move.destination.column as usize] =
-            self.get_piece(&player_move.source);
-        self.board[player_move.source.row as usize][player_move.source.column as usize] = Option::None;
+        // En passant is only possible for the turn after it was enabled.
+        self.en_passant_target = None;
+
+        let source_piece = self.get_piece(&player_move.source);
+        self.set_piece(&source_piece, &player_move.destination);
+        self.set_piece(&None, &player_move.source);
+
+        if let Some(en_passant_target) = player_move.en_passant_target.clone() {
+            self.set_piece(&None, &en_passant_target);
+        }
+
+        if player_move.enables_en_passant {
+            self.en_passant_target = Some(player_move.destination.clone());
+        }
     }
 
     fn is_in_bounds(&self, position: &Position) -> bool {
@@ -127,34 +144,58 @@ impl GameState {
         
         match piece.piece_type {
             PieceType::Pawn => {
+                let mut moves = vec![];
+
                 let direction = if piece.color == Color::White { 1 } else { -1 };
                 let start_row = if piece.color == Color::White { 1 } else {  6 };
 
-                // Pawns can move forward only one unless they are in their starting row.
-                let max_moves = if source.row == start_row { 2 } else { 1 };
-                dests.append(&mut self.get_consecutive_dests(
-                        source,
-                        &[(0, direction)],
-                        Some(max_moves),
-                        // Pawns can't take when moving forward.
-                        StopOption::BeforeEnemy
-                        ));
+                if let Some(forward_one) = self.relative(&source, 0, direction) {
+                    if self.get_occupation_status(&piece, &forward_one) == OccupationStatus::Empty {
+                        moves.push(Move::simple(source.clone(), forward_one));
+                        if let Some(forward_two) = self.relative(source, 0, 2 * direction) {
+                            // Pawns can move forward only one unless they are in their starting row.
+                            if source.row == start_row && self.get_occupation_status(&piece, &forward_two)
+                                    == OccupationStatus::Empty {
+                                moves.push(Move::en_passant_enabler(source.clone(), forward_two));
+                            }
+                        }
+                    }
+                }
 
                 // Pawns can take pieces on diagonals immediately in front of them.
-                dests.append(&mut self.get_consecutive_dests(
-                        source,
-                        &[(-1, direction), (1, direction)],
-                        Some(1),
-                        StopOption::OnEmpty
-                        ));
+                if let Some(left_attack) = self.relative(&source, -1, direction) {
+                    if self.get_occupation_status(&piece, &left_attack) == OccupationStatus::Enemy {
+                        moves.push(Move::simple(source.clone(), left_attack));
+                    }
+                }
 
-                // TODO: Add en passant
+                if let Some(right_attack) = self.relative(&source, 1, direction) {
+                    if self.get_occupation_status(&piece, &right_attack) == OccupationStatus::Enemy {
+                        moves.push(Move::simple(source.clone(), right_attack));
+                    }
+                }
+
+                if let Some(left_en_passant) = self.relative(&source, -1, 0) {
+                    if self.en_passant_target == Some(left_en_passant.clone()) {
+                        moves.push(Move::en_passant(
+                                source.clone(), source.relative(-1, direction), left_en_passant));
+                    }
+                }
+                
+                if let Some(right_en_passant) = self.relative(&source, 1, 0) {
+                    if self.en_passant_target == Some(right_en_passant.clone()) {
+                        moves.push(Move::en_passant(
+                                source.clone(), source.relative(1, direction), right_en_passant));
+                    }
+                }
+
+                return moves;
             },
 
             PieceType::Knight => {
                 dests.append(&mut self.get_custom_dests(
                         source,
-                        &[(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)],
+                        &[(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
                         ));
             },
 
@@ -162,8 +203,7 @@ impl GameState {
                 dests.append(&mut self.get_consecutive_dests(
                         source,
                         &[(-1, -1), (-1, 1), (1, -1), (1, 1)],
-                        None,
-                        StopOption::OnEnemy
+                        None
                         ));
             },
 
@@ -171,8 +211,7 @@ impl GameState {
                 dests.append(&mut self.get_consecutive_dests(
                         source,
                         &[(-1, 0), (0, -1), (0, 1), (1, 0)],
-                        None,
-                        StopOption::OnEnemy
+                        None
                         ));
             },
 
@@ -180,8 +219,7 @@ impl GameState {
                 dests.append(&mut self.get_consecutive_dests(
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
-                        None,
-                        StopOption::OnEnemy
+                        None
                         ));
 
             },
@@ -189,23 +227,21 @@ impl GameState {
                 dests.append(&mut self.get_consecutive_dests(
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
-                        Some(1),
-                        StopOption::OnEnemy
+                        Some(1)
                         ));
 
                 //TODO: Add castling.
             },
         }
 
-        dests.iter().map(|dest| Move { source: source.clone(), destination: dest.clone() }).collect::<Vec<_>>()
+        dests.iter().map(|dest| Move::simple(source.clone(), dest.clone())).collect::<Vec<_>>()
     }
 
     fn get_consecutive_dests(
             &self,
             source: &Position,
             dirs: &[(i8, i8)],
-            max_moves: Option<u8>,
-            take_option: StopOption) -> Vec<Position> {
+            max_moves: Option<u8>) -> Vec<Position> {
 
         let source_piece = &self.get_piece(source).unwrap();
 
@@ -227,12 +263,14 @@ impl GameState {
                     break;
                 }
                 
-                match (self.get_occupation_status(source_piece, &dest), take_option) {
-                    (OccupationStatus::Empty   , StopOption::OnEmpty ) => break,
-                    (OccupationStatus::Empty   , _                    ) => dests.push(dest.clone()),
-                    (OccupationStatus::Enemy   , StopOption::OnEmpty ) => dests.push(dest.clone()),
-                    (OccupationStatus::Enemy   , StopOption::OnEnemy  ) => { dests.push(dest.clone()); break; },
-                    (_                         , _                    ) => break,
+
+                match self.get_occupation_status(source_piece, &dest) {
+                    OccupationStatus::Friendly => break,
+                    OccupationStatus::Empty => dests.push(dest.clone()),
+                    OccupationStatus::Enemy => {
+                        dests.push(dest.clone());
+                        break;
+                    },
                 }
             }
         }
@@ -256,6 +294,15 @@ impl GameState {
 
         result
     }
+
+    fn relative(&self, source: &Position, col_offset: i8, row_offset: i8) -> Option<Position> {
+        let result = source.relative(col_offset, row_offset);
+        if self.is_in_bounds(&result) {
+            Some(result)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(PartialEq)]
@@ -263,13 +310,6 @@ enum OccupationStatus {
     Empty,
     Friendly,
     Enemy,
-}
-
-#[derive(PartialEq, Clone, Copy)]
-enum StopOption {
-    OnEnemy,
-    BeforeEnemy,
-    OnEmpty,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -301,15 +341,17 @@ impl Position {
             return None;
         }
 
-        let row = chars.next().unwrap().to_digit(10).unwrap();
-        if row == 0 || row > 8 {
+        if let Some(row) = chars.next().unwrap().to_digit(10) {
+            if row == 0 || row > 8 {
+                return None;
+            }
+            return Some(Position {
+                column: col.unwrap(),
+                row: (row - 1) as i8,
+            })
+        } else {
             return None;
         }
-
-        Some(Position {
-            column: col.unwrap(),
-            row: (row - 1) as i8,
-        })
     }
 
     fn relative(&self, column_offset: i8, row_offset: i8) -> Position {
@@ -335,13 +377,41 @@ impl Position {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct Move {
     source: Position,
     destination: Position,
+    enables_en_passant: bool,
+    en_passant_target: Option<Position>,
 }
 
 impl Move {
+    fn simple(source: Position, destination: Position) -> Move {
+        Move {
+            source: source,
+            destination: destination,
+            enables_en_passant: false,
+            en_passant_target: None,
+        }
+    }
+
+    fn en_passant(source: Position, destination: Position, target: Position) -> Move {
+        Move {
+            source: source,
+            destination: destination,
+            enables_en_passant: false,
+            en_passant_target: Some(target),
+        }
+    }
+
+    fn en_passant_enabler(source: Position, destination: Position) -> Move {
+        Move {
+            source: source,
+            destination: destination,
+            enables_en_passant: true,
+            en_passant_target: None,
+        }
+    }
 
     fn from_notation(notation: &str) -> Option<Move> {
         if notation.len() != 4 {
@@ -354,10 +424,7 @@ impl Move {
             return None;
         }
 
-        Some (Move {
-            source: source.unwrap(),
-            destination: dest.unwrap(),
-        })
+        Some (Move::simple(source.unwrap(), dest.unwrap()))
     }
 
     fn format(&self, game_state: &GameState) -> String {
@@ -378,12 +445,10 @@ impl Move {
 struct PlayerState {
     can_castle_short: bool,
     can_castle_long: bool,
-    // Add en passant moves.
 }
 
 fn human_player(game_state: &GameState) -> Move {
     let moves = game_state.get_current_player_moves();
-    let move_set = moves.iter().collect::<HashSet<_>>();
     loop {
         println!("Enter a move:");
         let mut input = String::new();
@@ -392,11 +457,11 @@ fn human_player(game_state: &GameState) -> Move {
         match Move::from_notation(&input) {
             None => println!("Invalid move"),
             Some(player_move) => {
-                if move_set.contains(&player_move) {
-                    return player_move;
+                match moves.iter().find(|m| m.source == player_move.source
+                                        && m.destination == player_move.destination) {
+                    None => println!("Illegal move"),
+                    Some(result) => return result.clone(),
                 }
-
-                println!("Illegal move");
             },
         };
     }
