@@ -1,25 +1,81 @@
 use position::Position;
 use piece_move::Move;
 
-#[derive(Clone)]
-struct PlayerState {
-    can_castle_short: bool,
-    can_castle_long: bool,
-}
+static NONE: Option<Move<'static>> = None;
 
-fn initial_player_state() -> PlayerState {
-    PlayerState {
-        can_castle_short: true,
-        can_castle_long: true,
-    }
-}
+static WHITE_LEFT_ROOK_MOVE: Option<Move<'static>> =
+    Some(Move {
+        source: Position{column: 0, row: 0},
+        destination: Position {column: 3, row: 0},
+        extra_castling_move: &NONE,
+        enables_en_passant: false,
+        en_passant_target: None 
+        });
+static WHITE_LEFT_CASTLE: Move<'static> =
+    Move {
+        source: Position {column: 4, row: 0},
+        destination: Position {column: 2, row: 0},
+        extra_castling_move: &WHITE_LEFT_ROOK_MOVE,
+        enables_en_passant: false,
+        en_passant_target: None 
+    };
+
+static WHITE_RIGHT_ROOK_MOVE: Option<Move<'static>> =
+    Some(Move {
+        source: Position {column: 7, row: 0},
+        destination: Position {column: 5, row: 0},
+        extra_castling_move: &NONE,
+        enables_en_passant: false,
+        en_passant_target: None 
+        });
+static WHITE_RIGHT_CASTLE: Move<'static> =
+    Move {
+        source: Position {column: 4, row: 0},
+        destination: Position {column: 6, row: 0},
+        extra_castling_move: &WHITE_RIGHT_ROOK_MOVE,
+        enables_en_passant: false,
+        en_passant_target: None
+    };
+
+static BLACK_LEFT_ROOK_MOVE: Option<Move<'static>> =
+    Some(Move {
+        source: Position {column: 0, row: 7},
+        destination: Position {column: 3, row: 0},
+        extra_castling_move: &NONE,
+        enables_en_passant: false,
+        en_passant_target: None
+    });
+static BLACK_LEFT_CASTLE: Move<'static> =
+    Move {
+        source: Position {column: 4, row: 7},
+        destination: Position {column: 2, row: 7},
+        extra_castling_move: &BLACK_LEFT_ROOK_MOVE,
+        enables_en_passant: false,
+        en_passant_target: None
+    };
+
+static BLACK_RIGHT_ROOK_MOVE: Option<Move<'static>> =
+    Some(Move {
+        source: Position {column: 7, row: 7},
+        destination: Position {column: 5, row: 7},
+        extra_castling_move: &NONE,
+        enables_en_passant: false,
+        en_passant_target: None
+    });
+static BLACK_RIGHT_CASTLE: Move<'static> =
+    Move {
+        source: Position {column: 4, row: 7},
+        destination: Position {column: 6, row: 7},
+        extra_castling_move: &BLACK_RIGHT_ROOK_MOVE,
+        enables_en_passant: false,
+        en_passant_target: None 
+    };
 
 #[derive(Clone)]
 pub struct GameState {
     board: [[Option<Piece>; 8]; 8],
     current_player: Color,
-    white_state: PlayerState,
-    black_state: PlayerState,
+    // Located here so we don't have to sweep the board of en passant targets after each turn.
     en_passant_target: Option<Position>,
 }
 
@@ -39,15 +95,13 @@ impl GameState {
         let mut board = [[Option::None; 8]; 8];
         for row in 0..8 {
             for column in 0..8 {
-                board[row][column] = raw_board[row][column].to_piece();
+                board[row][column] = raw_board[row][column].to_piece(true);
             }
         }
 
         GameState {
             board: board,
             current_player: Color::White,
-            white_state: initial_player_state(),
-            black_state: initial_player_state(),
             en_passant_target: Option::None,
         }
     }
@@ -67,7 +121,8 @@ impl GameState {
     }
 
     pub fn play_turn(&mut self, player_brain: Box<Fn(&GameState) -> Move>) {
-        let player_move = player_brain(&self.clone());
+        let game_state = self.clone();
+        let player_move = player_brain(&game_state);
         self.move_piece(&player_move);
 
         self.current_player = if self.current_player == Color::White {
@@ -89,9 +144,19 @@ impl GameState {
         // En passant is only possible for the turn after it was enabled.
         self.en_passant_target = None;
 
-        let source_piece = self.get_piece(&player_move.source);
-        self.set_piece(&source_piece, &player_move.destination);
+        let mut source_piece = self.get_piece(&player_move.source).unwrap();
+        if source_piece.piece_type == PieceType::King || source_piece.piece_type == PieceType::Rook {
+            source_piece.can_castle = false;
+        }
+
+        self.set_piece(&Some(source_piece), &player_move.destination);
         self.set_piece(&None, &player_move.source);
+
+        if let Some(extra_castling_move) = player_move.extra_castling_move.clone() {
+            let rook = self.get_piece(&extra_castling_move.source);
+            self.set_piece(&rook, &extra_castling_move.destination);
+            self.set_piece(&None, &extra_castling_move.source);
+        }
 
         if let Some(en_passant_target) = player_move.en_passant_target.clone() {
             self.set_piece(&None, &en_passant_target);
@@ -112,6 +177,10 @@ impl GameState {
             Some(piece) if piece.color == friendly_piece.color => OccupationStatus::Friendly,
             Some(_) => OccupationStatus::Enemy,
         }
+    }
+
+    fn is_empty(&self, position: &Position) -> bool {
+        self.get_piece(position).is_none()
     }
 
     pub fn get_current_player_moves(&self) -> Vec<Move> {
@@ -136,11 +205,10 @@ impl GameState {
         }
 
         let piece = maybe_piece.unwrap();
-        let mut dests = vec![];
+        let mut moves = vec![];
         
         match piece.piece_type {
             PieceType::Pawn => {
-                let mut moves = vec![];
 
                 let direction = if piece.color == Color::White { 1 } else { -1 };
                 let start_row = if piece.color == Color::White { 1 } else {  6 };
@@ -184,12 +252,10 @@ impl GameState {
                                 source.clone(), source.relative(1, direction), right_en_passant));
                     }
                 }
-
-                return moves;
             },
 
             PieceType::Knight => {
-                dests.append(&mut self.get_consecutive_dests(
+                moves.append(&mut self.get_consecutive_moves(
                         source,
                         &[(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)],
                         Some(1) 
@@ -197,7 +263,7 @@ impl GameState {
             },
 
             PieceType::Bishop => {
-                dests.append(&mut self.get_consecutive_dests(
+                moves.append(&mut self.get_consecutive_moves(
                         source,
                         &[(-1, -1), (-1, 1), (1, -1), (1, 1)],
                         None
@@ -205,7 +271,7 @@ impl GameState {
             },
 
             PieceType::Rook => {
-                dests.append(&mut self.get_consecutive_dests(
+                moves.append(&mut self.get_consecutive_moves(
                         source,
                         &[(-1, 0), (0, -1), (0, 1), (1, 0)],
                         None
@@ -213,7 +279,7 @@ impl GameState {
             },
 
             PieceType::Queen => {
-                dests.append(&mut self.get_consecutive_dests(
+                moves.append(&mut self.get_consecutive_moves(
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
                         None
@@ -221,57 +287,88 @@ impl GameState {
 
             },
             PieceType::King => {
-                dests.append(&mut self.get_consecutive_dests(
+                moves.append(&mut self.get_consecutive_moves(
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
                         Some(1)
                         ));
 
+                if piece.can_castle {
+                    let row = if piece.color == Color::White { 0 } else { 7 };
+                    let left_rook_position = Position { column: 0, row: row };
+                    if self.get_piece(&left_rook_position).map_or(false, |piece| piece.can_castle)
+                            && self.are_all_empty(&[(1,row), (2,row), (3,row)]) {
+                        moves.push(if piece.color == Color::White {
+                            WHITE_LEFT_CASTLE.clone()
+                        } else {
+                            BLACK_LEFT_CASTLE.clone()
+                        });
+                    }
+
+                    if self.get_piece(&Position { column: 7, row: row}).map_or(false, |piece| piece.can_castle)
+                            && self.are_all_empty(&[(5,row), (6,row)]) {
+                        moves.push(if piece.color == Color::White {
+                            WHITE_RIGHT_CASTLE.clone()
+                        } else {
+                            BLACK_RIGHT_CASTLE.clone()
+                        });
+                    }
+                }
+
             },
         }
 
-        dests.iter().map(|dest| Move::simple(source.clone(), dest.clone())).collect::<Vec<_>>()
+        moves
     }
 
-    fn get_consecutive_dests(
+    fn get_consecutive_moves(
             &self,
             source: &Position,
             dirs: &[(i8, i8)],
-            max_moves: Option<u8>) -> Vec<Position> {
+            max_moves: Option<u8>) -> Vec<Move> {
 
         let source_piece = &self.get_piece(source).unwrap();
 
-        let mut dests = vec![];
+        let mut moves = vec![];
 
         for &(col_dir, row_dir) in dirs {
             if col_dir == 0 && row_dir == 0 {
                 panic!("at least one dir must be non-zero");
             }
 
-            let mut current_dir_dests = vec![];
+            let mut current_dir_moves = vec![];
             let mut dest = source.clone();
             loop {
                 dest = dest.relative(col_dir, row_dir);
                 if !self.is_in_bounds(&dest)
-                        || max_moves.map_or(false, |max| current_dir_dests.len() >= max as usize) {
+                        || max_moves.map_or(false, |max| current_dir_moves.len() >= max as usize) {
                     break;
                 }
-                
 
                 match self.get_occupation_status(source_piece, &dest) {
                     OccupationStatus::Friendly => break,
-                    OccupationStatus::Empty => dests.push(dest.clone()),
+                    OccupationStatus::Empty => current_dir_moves.push(Move::simple(source.clone(), dest.clone())),
                     OccupationStatus::Enemy => {
-                        current_dir_dests.push(dest.clone());
+                        current_dir_moves.push(Move::simple(source.clone(), dest.clone()));
                         break;
                     },
                 }
             }
 
-            dests.append(&mut current_dir_dests);
+            moves.append(&mut current_dir_moves);
         }
 
-        dests
+        moves
+    }
+
+    fn are_all_empty(&self, positions: &[(i8, i8)]) -> bool {
+        for position in positions.iter() {
+            if !self.is_empty(&Position { column: position.0, row: position.1 }) {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn relative(&self, source: &Position, col_offset: i8, row_offset: i8) -> Option<Position> {
@@ -295,6 +392,7 @@ enum OccupationStatus {
 struct Piece {
     color: Color,
     piece_type: PieceType,
+    can_castle: bool,
 }
 
 impl Piece {
@@ -317,17 +415,15 @@ impl Piece {
 }
 
 trait ToPiece {
-    fn to_piece(&self) -> Option<Piece>;
+    fn to_piece(&self, can_castle: bool) -> Option<Piece>;
 }
 
 impl ToPiece for char {
-    fn to_piece(&self) -> Option<Piece> {
+    fn to_piece(&self, can_castle: bool) -> Option<Piece> {
         if *self == '-' {
             None
         } else {
-            Some(Piece {
-                color: if self.is_uppercase() { Color::White } else { Color::Black },
-                piece_type: match self.to_uppercase().next().unwrap() {
+            let piece_type = match self.to_uppercase().next().unwrap() {
                     'P' => PieceType::Pawn,
                     'N' => PieceType::Knight,
                     'B' => PieceType::Bishop,
@@ -335,7 +431,18 @@ impl ToPiece for char {
                     'Q' => PieceType::Queen,
                     'K' => PieceType::King,
                     _   => unreachable!()
-                }
+            };
+            let can_castle = if piece_type == PieceType::King || piece_type == PieceType::Rook {
+                    can_castle
+                } else {
+                    false
+                };
+            Some(Piece {
+                color: if self.is_uppercase() { Color::White } else { Color::Black },
+                piece_type: piece_type,
+                // Only Kings and Rooks can be involved in castling, regardless of what was
+                // specified.
+                can_castle: can_castle,
             })
         }
     }

@@ -5,6 +5,10 @@ pub struct Position {
 }
 
 impl Position {
+    pub fn new(column: i8, row: i8) -> Position {
+        Position { column: column, row: row }
+    }
+
     pub fn from_notation(notation: &str) -> Option<Position> {
         if notation.len() != 2 {
             return None;
@@ -26,6 +30,7 @@ impl Position {
         if col.is_none() {
             return None;
         } 
+
         if let Some(row) = chars.next().unwrap().to_digit(10) {
             if row == 0 || row > 8 {
                 return None;

@@ -16,7 +16,9 @@ pub fn human_player(game_state: &GameState) -> Move {
                 match moves.iter().find(|m| m.source == player_move.source
                                         && m.destination == player_move.destination) {
                     None => println!("Illegal move"),
-                    Some(result) => return result.clone(),
+                    Some(result) => {
+                        return result.clone();
+                    }
                 }
             },
         };
