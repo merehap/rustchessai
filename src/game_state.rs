@@ -189,9 +189,10 @@ impl GameState {
             },
 
             PieceType::Knight => {
-                dests.append(&mut self.get_custom_dests(
+                dests.append(&mut self.get_consecutive_dests(
                         source,
-                        &[(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
+                        &[(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)],
+                        Some(1) 
                         ));
             },
 
@@ -226,7 +227,6 @@ impl GameState {
                         Some(1)
                         ));
 
-                //TODO: Add castling.
             },
         }
 
@@ -248,14 +248,12 @@ impl GameState {
                 panic!("at least one dir must be non-zero");
             }
 
-            if col_dir.abs() > 1 || row_dir.abs() > 1 {
-                panic!("dirs must be between -1 and 1");
-            }
-
+            let mut current_dir_dests = vec![];
             let mut dest = source.clone();
             loop {
                 dest = dest.relative(col_dir, row_dir);
-                if !self.is_in_bounds(&dest) || max_moves.map_or(false, |max| dests.len() >= max as usize) {
+                if !self.is_in_bounds(&dest)
+                        || max_moves.map_or(false, |max| current_dir_dests.len() >= max as usize) {
                     break;
                 }
                 
@@ -264,31 +262,16 @@ impl GameState {
                     OccupationStatus::Friendly => break,
                     OccupationStatus::Empty => dests.push(dest.clone()),
                     OccupationStatus::Enemy => {
-                        dests.push(dest.clone());
+                        current_dir_dests.push(dest.clone());
                         break;
                     },
                 }
             }
+
+            dests.append(&mut current_dir_dests);
         }
 
         dests
-    }
-
-    fn get_custom_dests(&self, source: &Position, relative_dests: &[(i8, i8)]) -> Vec<Position> {
-        let source_piece = &self.get_piece(source).unwrap();
-        let mut result = vec![];
-        for relative_dest in relative_dests {
-            let dest = &source.relative(relative_dest.0, relative_dest.1);
-            if !self.is_in_bounds(dest) {
-                continue;
-            }
-
-            if self.get_occupation_status(source_piece, &dest) != OccupationStatus::Friendly {
-                result.push(dest.clone());
-            }
-        }
-
-        result
     }
 
     fn relative(&self, source: &Position, col_offset: i8, row_offset: i8) -> Option<Position> {
