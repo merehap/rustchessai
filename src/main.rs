@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+mod piece_type;
 mod position;
 mod piece_move;
 mod game_state;

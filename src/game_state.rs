@@ -1,3 +1,4 @@
+use piece_type::PieceType;
 use position::Position;
 use piece_move::Move;
 
@@ -9,7 +10,8 @@ static WHITE_LEFT_ROOK_MOVE: Option<Move<'static>> =
         destination: Position {column: 3, row: 0},
         extra_castling_move: &NONE,
         enables_en_passant: false,
-        en_passant_target: None 
+        en_passant_target: None,
+        promotion_piece_type: None,
         });
 static WHITE_LEFT_CASTLE: Move<'static> =
     Move {
@@ -17,7 +19,8 @@ static WHITE_LEFT_CASTLE: Move<'static> =
         destination: Position {column: 2, row: 0},
         extra_castling_move: &WHITE_LEFT_ROOK_MOVE,
         enables_en_passant: false,
-        en_passant_target: None 
+        en_passant_target: None,
+        promotion_piece_type: None, 
     };
 
 static WHITE_RIGHT_ROOK_MOVE: Option<Move<'static>> =
@@ -26,7 +29,8 @@ static WHITE_RIGHT_ROOK_MOVE: Option<Move<'static>> =
         destination: Position {column: 5, row: 0},
         extra_castling_move: &NONE,
         enables_en_passant: false,
-        en_passant_target: None 
+        en_passant_target: None,
+        promotion_piece_type: None, 
         });
 static WHITE_RIGHT_CASTLE: Move<'static> =
     Move {
@@ -34,7 +38,8 @@ static WHITE_RIGHT_CASTLE: Move<'static> =
         destination: Position {column: 6, row: 0},
         extra_castling_move: &WHITE_RIGHT_ROOK_MOVE,
         enables_en_passant: false,
-        en_passant_target: None
+        en_passant_target: None,
+        promotion_piece_type: None,
     };
 
 static BLACK_LEFT_ROOK_MOVE: Option<Move<'static>> =
@@ -43,7 +48,8 @@ static BLACK_LEFT_ROOK_MOVE: Option<Move<'static>> =
         destination: Position {column: 3, row: 0},
         extra_castling_move: &NONE,
         enables_en_passant: false,
-        en_passant_target: None
+        en_passant_target: None,
+        promotion_piece_type: None,
     });
 static BLACK_LEFT_CASTLE: Move<'static> =
     Move {
@@ -51,7 +57,8 @@ static BLACK_LEFT_CASTLE: Move<'static> =
         destination: Position {column: 2, row: 7},
         extra_castling_move: &BLACK_LEFT_ROOK_MOVE,
         enables_en_passant: false,
-        en_passant_target: None
+        en_passant_target: None,
+        promotion_piece_type: None,
     };
 
 static BLACK_RIGHT_ROOK_MOVE: Option<Move<'static>> =
@@ -60,7 +67,8 @@ static BLACK_RIGHT_ROOK_MOVE: Option<Move<'static>> =
         destination: Position {column: 5, row: 7},
         extra_castling_move: &NONE,
         enables_en_passant: false,
-        en_passant_target: None
+        en_passant_target: None,
+        promotion_piece_type: None,
     });
 static BLACK_RIGHT_CASTLE: Move<'static> =
     Move {
@@ -68,7 +76,8 @@ static BLACK_RIGHT_CASTLE: Move<'static> =
         destination: Position {column: 6, row: 7},
         extra_castling_move: &BLACK_RIGHT_ROOK_MOVE,
         enables_en_passant: false,
-        en_passant_target: None 
+        en_passant_target: None,
+        promotion_piece_type: None,
     };
 
 #[derive(Clone)]
@@ -149,7 +158,12 @@ impl GameState {
             source_piece.can_castle = false;
         }
 
-        self.set_piece(&Some(source_piece), &player_move.destination);
+        let result_piece = match player_move.promotion_piece_type {
+            None => source_piece,
+            Some(promotion_piece_type) => Piece { piece_type: promotion_piece_type, .. source_piece },
+        };
+
+        self.set_piece(&Some(result_piece), &player_move.destination);
         self.set_piece(&None, &player_move.source);
 
         if let Some(extra_castling_move) = player_move.extra_castling_move.clone() {
@@ -210,11 +224,16 @@ impl GameState {
         match piece.piece_type {
             PieceType::Pawn => {
 
-                let direction = if piece.color == Color::White { 1 } else { -1 };
-                let start_row = if piece.color == Color::White { 1 } else {  6 };
-
+                let (direction, start_row, promotion_row) = match piece.color {
+                    Color::White => ( 1, 1, 7),
+                    Color::Black => (-1, 6, 0), 
+                };
+                
                 if let Some(forward_one) = self.relative(&source, 0, direction) {
-                    if self.get_occupation_status(&piece, &forward_one) == OccupationStatus::Empty {
+                    if forward_one.row == promotion_row {
+                        // TODO: Allow promotion pieces other than the queen.
+                        moves.push(Move::promotion(source.clone(), forward_one, PieceType::Queen));
+                    } else if self.get_occupation_status(&piece, &forward_one) == OccupationStatus::Empty {
                         moves.push(Move::simple(source.clone(), forward_one));
                         if let Some(forward_two) = self.relative(source, 0, 2 * direction) {
                             // Pawns can move forward only one unless they are in their starting row.
@@ -228,13 +247,19 @@ impl GameState {
 
                 // Pawns can take pieces on diagonals immediately in front of them.
                 if let Some(left_attack) = self.relative(&source, -1, direction) {
-                    if self.get_occupation_status(&piece, &left_attack) == OccupationStatus::Enemy {
+                    if left_attack.row == promotion_row {
+                        // TODO: Allow promotion pieces other than the queen.
+                        moves.push(Move::promotion(source.clone(), left_attack, PieceType::Queen));
+                    } else if self.get_occupation_status(&piece, &left_attack) == OccupationStatus::Enemy {
                         moves.push(Move::simple(source.clone(), left_attack));
                     }
                 }
 
                 if let Some(right_attack) = self.relative(&source, 1, direction) {
-                    if self.get_occupation_status(&piece, &right_attack) == OccupationStatus::Enemy {
+                    if right_attack.row == promotion_row {
+                        // TODO: Allow promotion pieces other than the queen.
+                        moves.push(Move::promotion(source.clone(), right_attack, PieceType::Queen));
+                    } else if self.get_occupation_status(&piece, &right_attack) == OccupationStatus::Enemy {
                         moves.push(Move::simple(source.clone(), right_attack));
                     }
                 }
@@ -446,16 +471,6 @@ impl ToPiece for char {
             })
         }
     }
-}
-
-#[derive(PartialEq, Clone, Copy)]
-enum PieceType {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King
 }
 
 #[derive(PartialEq, Clone, Copy)]

@@ -5,10 +5,6 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(column: i8, row: i8) -> Position {
-        Position { column: column, row: row }
-    }
-
     pub fn from_notation(notation: &str) -> Option<Position> {
         if notation.len() != 2 {
             return None;

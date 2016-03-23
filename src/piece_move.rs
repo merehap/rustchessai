@@ -1,12 +1,14 @@
 use position::Position;
+use piece_type::PieceType;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Move<'a> {
     pub source: Position,
     pub destination: Position,
     pub enables_en_passant: bool,
     pub en_passant_target: Option<Position>,
     pub extra_castling_move: &'a Option<Move<'a>>,
+    pub promotion_piece_type: Option<PieceType>
 }
 
 static NONE: Option<Move<'static>> = None;
@@ -19,6 +21,7 @@ impl<'a> Move<'a> {
             enables_en_passant: false,
             en_passant_target: None,
             extra_castling_move: &NONE,
+            promotion_piece_type: None,
         }
     }
 
@@ -29,6 +32,7 @@ impl<'a> Move<'a> {
             enables_en_passant: false,
             en_passant_target: Some(target),
             extra_castling_move: &NONE,
+            promotion_piece_type: None,
         }
     }
 
@@ -39,6 +43,7 @@ impl<'a> Move<'a> {
             enables_en_passant: true,
             en_passant_target: None,
             extra_castling_move: &NONE,
+            promotion_piece_type: None,
         }
     }
 
@@ -52,6 +57,18 @@ impl<'a> Move<'a> {
             enables_en_passant: false,
             en_passant_target: None,
             extra_castling_move: extra_castling_move,
+            promotion_piece_type: None,
+        }
+    }
+
+    pub fn promotion(source: Position, destination: Position, promotion_piece_type: PieceType) -> Move<'a> {
+        Move {
+            source: source,
+            destination: destination,
+            enables_en_passant: false,
+            en_passant_target: None,
+            extra_castling_move: &NONE,
+            promotion_piece_type: Some(promotion_piece_type),
         }
     }
 
