@@ -50,8 +50,7 @@ static BLACK_LEFT_ROOK_MOVE: Option<Move<'static>> =
         enables_en_passant: false,
         en_passant_target: None,
         promotion_piece_type: None,
-    });
-static BLACK_LEFT_CASTLE: Move<'static> =
+    }); static BLACK_LEFT_CASTLE: Move<'static> =
     Move {
         source: Position {column: 4, row: 7},
         destination: Position {column: 2, row: 7},
@@ -82,8 +81,8 @@ static BLACK_RIGHT_CASTLE: Move<'static> =
 
 #[derive(Clone)]
 pub struct GameState {
+    pub current_player: Color,
     board: [[Option<Piece>; 8]; 8],
-    current_player: Color,
     // Located here so we don't have to sweep the board of en passant targets after each turn.
     en_passant_target: Option<Position>,
 }
@@ -141,6 +140,19 @@ impl GameState {
         };
     }
 
+    pub fn get_all_pieces(&self) -> Vec<Piece> {
+        let mut result = vec![];
+        for col in 0..8 {
+            for row in 0..8 {
+                if let Some(piece) = self.get_piece(&Position { column: col, row: row }) {
+                    result.push(piece);
+                }
+            }
+        }
+        
+        result
+    }
+
     fn get_piece(&self, position: &Position) -> Option<Piece> {
         self.board[position.row as usize][position.column as usize]
     }
@@ -149,7 +161,7 @@ impl GameState {
         self.board[position.row as usize][position.column as usize] = *piece;
     }
 
-    fn move_piece(&mut self, player_move: &Move) {
+    pub fn move_piece(&mut self, player_move: &Move) {
         // En passant is only possible for the turn after it was enabled.
         self.en_passant_target = None;
 
@@ -197,13 +209,13 @@ impl GameState {
         self.get_piece(position).is_none()
     }
 
-    pub fn get_current_player_moves(&self) -> Vec<Move> {
+    pub fn get_player_moves(&self, color: Color) -> Vec<Move> {
         let mut moves = vec![];
         for row in 0..8 {
             for column in 0..8 {
                 let position = &Position { column: column, row: row };
                 let piece = self.get_piece(position);
-                if piece.map_or(false, |p| p.color == self.current_player) {
+                if piece.map_or(false, |p| p.color == color) {
                     moves.append(&mut self.get_moves_for_piece(position));
                 }
             }
@@ -414,9 +426,9 @@ enum OccupationStatus {
 }
 
 #[derive(Copy, Clone)]
-struct Piece {
-    color: Color,
-    piece_type: PieceType,
+pub struct Piece {
+    pub color: Color,
+    pub piece_type: PieceType,
     can_castle: bool,
 }
 
@@ -474,7 +486,7 @@ impl ToPiece for char {
 }
 
 #[derive(PartialEq, Clone, Copy)]
-enum Color {
+pub enum Color {
     White,
     Black
 }
