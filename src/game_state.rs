@@ -45,7 +45,7 @@ static WHITE_RIGHT_CASTLE: Move<'static> =
 static BLACK_LEFT_ROOK_MOVE: Option<Move<'static>> =
     Some(Move {
         source: Position {column: 0, row: 7},
-        destination: Position {column: 3, row: 0},
+        destination: Position {column: 3, row: 7},
         extra_castling_move: &NONE,
         enables_en_passant: false,
         en_passant_target: None,
@@ -128,16 +128,11 @@ impl GameState {
         result
     }
 
-    pub fn play_turn(&mut self, player_brain: Box<Fn(&GameState) -> Move>) {
+    pub fn play_turn(&mut self, player_brain: Box<Fn(&GameState) -> Option<Move>>) {
         let game_state = self.clone();
-        let player_move = player_brain(&game_state);
+        let player_move = player_brain(&game_state)
+            .expect("Player failed to return a move. Perhaps a stale mate occurred?");
         self.move_piece(&player_move);
-
-        self.current_player = if self.current_player == Color::White {
-            Color::Black
-        } else {
-            Color::White
-        };
     }
 
     pub fn get_all_pieces(&self) -> Vec<Piece> {
@@ -191,6 +186,12 @@ impl GameState {
         if player_move.enables_en_passant {
             self.en_passant_target = Some(player_move.destination.clone());
         }
+
+        self.current_player = if self.current_player == Color::White {
+            Color::Black
+        } else {
+            Color::White
+        };
     }
 
     fn is_in_bounds(&self, position: &Position) -> bool {
@@ -485,7 +486,7 @@ impl ToPiece for char {
     }
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Color {
     White,
     Black

@@ -4,10 +4,23 @@ use piece_move::Move;
 use game_state::GameState;
 use game_state::Color;
 
-pub fn computer_player(initial_game_state: &GameState) -> Move {
+pub fn computer_player<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+    if let Some((best_move, best_score)) = determine_best_move(initial_game_state, 3) {
+        println!("Current score according to the AI: {}", best_score);
+        return Some(best_move);
+    }
+
+    None
+}
+
+fn determine_best_move<'a>(initial_game_state: &'a GameState, ply: u8) -> Option<(Move<'a>, i16)> {
+    if ply == 0 {
+        return None;
+    }
+
     let moves = initial_game_state.get_player_moves(initial_game_state.current_player);
     if moves.is_empty() {
-        panic!("no moves possible!");
+        return None;
     }
 
     let current_player = initial_game_state.current_player;
@@ -16,8 +29,18 @@ pub fn computer_player(initial_game_state: &GameState) -> Move {
     let mut best_move = moves[0].clone();
     for piece_move in moves {
         let mut game_state = initial_game_state.clone();
+        let before_player = game_state.current_player;
         game_state.move_piece(&piece_move);
-        let score = count_current_score(&game_state);
+        let after_player = game_state.current_player;
+        let score = if ply == 1 {
+            // Use the base, non-recursive heuristic if we are only looking ahead one move.
+            count_current_score(&game_state)
+        } else {
+            // Determine the other player's best move, returning 0 if there isn't a move,
+            // indicating stalemate.
+            determine_best_move(&game_state, ply - 1).map_or(0, |(_, s)| s)
+        };
+
         if (current_player == Color::White && score > best_score)
                 || (current_player == Color::Black && score < best_score) {
             best_score = score;
@@ -25,11 +48,11 @@ pub fn computer_player(initial_game_state: &GameState) -> Move {
         }
     }
 
-    best_move
+    Some((best_move, best_score))
 }
 
 fn count_current_score(game_state: &GameState) -> i16 {
-    let piece_score = 10 * game_state.get_all_pieces().iter().map(|piece| {
+    let piece_score = 15 * game_state.get_all_pieces().iter().map(|piece| {
         let sign = if piece.color == Color::White { 1 } else { -1 };
         sign * piece_value(&piece.piece_type) as i16
     }).fold(0, |x, y| x + y); 

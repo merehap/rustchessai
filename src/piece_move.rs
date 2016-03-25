@@ -85,4 +85,8 @@ impl<'a> Move<'a> {
 
         Some (Move::simple(source.unwrap(), dest.unwrap()))
     }
+
+    pub fn simple_format(&self) -> String {
+        format!("{}{}", self.source.format(), self.destination.format())
+    }
 }
