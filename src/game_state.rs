@@ -125,14 +125,21 @@ impl GameState {
             result.push('\n');
         }
 
+        result.push_str(format!("{:?} to play\n", self.current_player).as_str());
+
         result
     }
 
-    pub fn play_turn(&mut self, player_brain: Box<Fn(&GameState) -> Option<Move>>) {
+    pub fn play_turn(&mut self, player_brain: Box<Fn(&GameState) -> Option<Move>>) -> bool {
         let game_state = self.clone();
-        let player_move = player_brain(&game_state)
-            .expect("Player failed to return a move. Perhaps a stale mate occurred?");
-        self.move_piece(&player_move);
+        if let Some(player_move) = player_brain(&game_state) {
+            println!("{:?} played {}", self.current_player, player_move.simple_format()); 
+            self.move_piece(&player_move);
+            true
+        } else {
+            false
+        }
+
     }
 
     pub fn get_all_pieces(&self) -> Vec<Piece> {

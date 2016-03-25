@@ -4,16 +4,30 @@ use piece_move::Move;
 use game_state::GameState;
 use game_state::Color;
 
-pub fn computer_player<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
-    if let Some((best_move, best_score)) = determine_best_move(initial_game_state, 3) {
-        println!("Current score according to the AI: {}", best_score);
+pub fn max_moves_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+    computer_player(initial_game_state, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
+}
+
+fn computer_player<'a>(
+        initial_game_state: &'a GameState,
+        name: String,
+        eval_function: Box<Fn(&GameState) -> i16>)
+        -> Option<Move<'a>> {
+
+    if let Some((best_move, best_score)) = determine_best_move(initial_game_state, &eval_function, 4) {
+        println!("Current score according to the {} AI: {}", name, best_score);
         return Some(best_move);
     }
 
     None
 }
 
-fn determine_best_move<'a>(initial_game_state: &'a GameState, ply: u8) -> Option<(Move<'a>, i16)> {
+fn determine_best_move<'a>(
+        initial_game_state: &'a GameState,
+        eval_function: &Box<Fn(&GameState) -> i16>,
+        ply: u8)
+        -> Option<(Move<'a>, i16)> {
+
     if ply == 0 {
         return None;
     }
@@ -34,11 +48,11 @@ fn determine_best_move<'a>(initial_game_state: &'a GameState, ply: u8) -> Option
         let after_player = game_state.current_player;
         let score = if ply == 1 {
             // Use the base, non-recursive heuristic if we are only looking ahead one move.
-            count_current_score(&game_state)
+            eval_function(&game_state)
         } else {
             // Determine the other player's best move, returning 0 if there isn't a move,
             // indicating stalemate.
-            determine_best_move(&game_state, ply - 1).map_or(0, |(_, s)| s)
+            determine_best_move(&game_state, eval_function, ply - 1).map_or(0, |(_, s)| s)
         };
 
         if (current_player == Color::White && score > best_score)
@@ -51,7 +65,7 @@ fn determine_best_move<'a>(initial_game_state: &'a GameState, ply: u8) -> Option
     Some((best_move, best_score))
 }
 
-fn count_current_score(game_state: &GameState) -> i16 {
+fn max_moves_eval(game_state: &GameState) -> i16 {
     let piece_score = 15 * game_state.get_all_pieces().iter().map(|piece| {
         let sign = if piece.color == Color::White { 1 } else { -1 };
         sign * piece_value(&piece.piece_type) as i16

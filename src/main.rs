@@ -10,14 +10,21 @@ mod computer_player;
 
 use game_state::GameState;
 use human_player::human_player;
-use computer_player::computer_player;
+use computer_player::max_moves_comp;
 
 fn main() {
     let mut game_state = GameState::opening_state();
     loop {
         println!("{}", game_state.format());
-        game_state.play_turn(Box::new(human_player));
+        if !game_state.play_turn(Box::new(max_moves_comp)) {
+            println!("Black won!");
+            return;
+        }
+
         println!("{}", game_state.format());
-        game_state.play_turn(Box::new(computer_player));
+        if !game_state.play_turn(Box::new(max_moves_comp)) {
+            println!("White won!");
+            return;
+        }
     }
 }
