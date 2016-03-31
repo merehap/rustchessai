@@ -11,6 +11,7 @@ mod computer_player;
 use game_state::GameState;
 use human_player::human_player;
 use computer_player::max_moves_comp;
+use computer_player::max_spaces_comp;
 
 fn main() {
     let mut game_state = GameState::opening_state();
@@ -22,7 +23,7 @@ fn main() {
         }
 
         println!("{}", game_state.format());
-        if !game_state.play_turn(Box::new(max_moves_comp)) {
+        if !game_state.play_turn(Box::new(max_spaces_comp)) {
             println!("White won!");
             return;
         }

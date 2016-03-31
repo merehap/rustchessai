@@ -139,7 +139,6 @@ impl GameState {
         } else {
             false
         }
-
     }
 
     pub fn get_all_pieces(&self) -> Vec<Piece> {

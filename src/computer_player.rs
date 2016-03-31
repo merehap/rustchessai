@@ -1,11 +1,21 @@
+use std::cmp::Ordering;
+
 use piece_type::PieceType;
 use piece_type::PieceType::*;
 use piece_move::Move;
 use game_state::GameState;
 use game_state::Color;
 
+pub fn max_spaces_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+    computer_player(initial_game_state, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
+}
+
 pub fn max_moves_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
     computer_player(initial_game_state, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
+}
+
+pub fn piece_score_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+    computer_player(initial_game_state, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
 }
 
 fn computer_player<'a>(
@@ -66,15 +76,48 @@ fn determine_best_move<'a>(
 }
 
 fn max_moves_eval(game_state: &GameState) -> i16 {
-    let piece_score = 15 * game_state.get_all_pieces().iter().map(|piece| {
-        let sign = if piece.color == Color::White { 1 } else { -1 };
-        sign * piece_value(&piece.piece_type) as i16
-    }).fold(0, |x, y| x + y); 
+    let piece_score = piece_score_eval(&game_state); 
 
     let move_score = game_state.get_player_moves(Color::White).len() as i16
             - game_state.get_player_moves(Color::Black).len() as i16;
 
     piece_score + move_score as i16
+}
+
+fn max_spaces_eval(game_state: &GameState) -> i16 {
+    let piece_score = piece_score_eval(&game_state);
+
+    let mut ownership_grid = [[0; 8]; 8];
+
+    for white_move in game_state.get_player_moves(Color::White).iter() {
+        let dest = white_move.destination.clone();
+        ownership_grid[dest.row as usize][dest.column as usize] += 1;
+    }
+
+    for white_move in game_state.get_player_moves(Color::Black).iter() {
+        let dest = white_move.destination.clone();
+        ownership_grid[dest.row as usize][dest.column as usize] -= 1;
+    }
+
+    let mut space_score = 0;
+    for col in 0..8 {
+        for row in 0..8 {
+            match ownership_grid[row][col].partial_cmp(&0).unwrap() {
+                Ordering::Less => space_score -= 1,
+                Ordering::Greater => space_score += 1,
+                _ => (),
+            }
+        }
+    }
+
+    piece_score + space_score
+}
+
+fn piece_score_eval(game_state: &GameState) -> i16 {
+    15 * game_state.get_all_pieces().iter().map(|piece| {
+        let sign = if piece.color == Color::White { 1 } else { -1 };
+        sign * piece_value(&piece.piece_type) as i16
+    }).fold(0, |x, y| x + y)
 }
 
 fn piece_value(piece_type: &PieceType) -> i8 {
