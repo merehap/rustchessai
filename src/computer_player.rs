@@ -6,15 +6,15 @@ use piece_move::Move;
 use game_state::GameState;
 use game_state::Color;
 
-pub fn max_spaces_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+pub fn max_spaces_comp(initial_game_state: &GameState) -> Option<Move> {
     computer_player(initial_game_state, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
 }
 
-pub fn max_moves_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+pub fn max_moves_comp(initial_game_state: &GameState) -> Option<Move> {
     computer_player(initial_game_state, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
 }
 
-pub fn piece_score_comp<'a>(initial_game_state: &'a GameState) -> Option<Move<'a>> {
+pub fn piece_score_comp(initial_game_state: &GameState) -> Option<Move> {
     computer_player(initial_game_state, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
 }
 
@@ -53,16 +53,15 @@ fn determine_best_move<'a>(
     let mut best_move = moves[0].clone();
     for piece_move in moves {
         let mut game_state = initial_game_state.clone();
-        let before_player = game_state.current_player;
         game_state.move_piece(&piece_move);
-        let after_player = game_state.current_player;
         let score = if ply == 1 {
             // Use the base, non-recursive heuristic if we are only looking ahead one move.
             eval_function(&game_state)
         } else {
             // Determine the other player's best move, returning 0 if there isn't a move,
             // indicating stalemate.
-            determine_best_move(&game_state, eval_function, ply - 1).map_or(0, |(_, s)| s)
+            determine_best_move(&game_state, eval_function, ply - 1)
+                .map_or(0, |(_, s)| s)
         };
 
         if (current_player == Color::White && score > best_score)
@@ -89,12 +88,12 @@ fn max_spaces_eval(game_state: &GameState) -> i16 {
 
     let mut ownership_grid = [[0; 8]; 8];
 
-    for white_move in game_state.get_player_moves(Color::White).iter() {
+    for white_move in game_state.get_player_moves(Color::White) {
         let dest = white_move.destination.clone();
         ownership_grid[dest.row as usize][dest.column as usize] += 1;
     }
 
-    for white_move in game_state.get_player_moves(Color::Black).iter() {
+    for white_move in game_state.get_player_moves(Color::Black) {
         let dest = white_move.destination.clone();
         ownership_grid[dest.row as usize][dest.column as usize] -= 1;
     }
@@ -102,7 +101,7 @@ fn max_spaces_eval(game_state: &GameState) -> i16 {
     let mut space_score = 0;
     for col in 0..8 {
         for row in 0..8 {
-            match ownership_grid[row][col].partial_cmp(&0).unwrap() {
+            match ownership_grid[row][col].cmp(&0) {
                 Ordering::Less => space_score -= 1,
                 Ordering::Greater => space_score += 1,
                 _ => (),
