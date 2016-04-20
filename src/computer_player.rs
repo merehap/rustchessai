@@ -6,6 +6,8 @@ use piece_move::Move;
 use game_state::GameState;
 use game_state::Color;
 
+const MAX_DEPTH: u8 = 4;
+
 pub fn max_spaces_comp(initial_game_state: &GameState) -> Option<Move> {
     computer_player(initial_game_state, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
 }
@@ -24,8 +26,11 @@ fn computer_player<'a>(
         eval_function: Box<Fn(&GameState) -> i16>)
         -> Option<Move<'a>> {
 
-    if let Some((best_move, best_score)) = determine_best_move(initial_game_state, &eval_function, 4) {
-        println!("Current score according to the {} AI: {}", name, best_score);
+    if let Some((best_move, best_score)) = determine_best_move(initial_game_state, &eval_function, MAX_DEPTH) {
+        println!("Current score according to the {} AI ({:?}): {}",
+            name,
+            initial_game_state.current_player,
+            best_score);
         return Some(best_move);
     }
 

@@ -133,7 +133,9 @@ impl GameState {
     pub fn play_turn(&mut self, player_brain: &Box<Fn(&GameState) -> Option<Move>>) -> bool {
         let game_state = self.clone();
         if let Some(player_move) = player_brain(&game_state) {
-            println!("{:?} played {}", self.current_player, player_move.simple_format()); 
+            println!("{:?} played {}",
+                self.current_player,
+                player_move.simple_format());
             self.move_piece(&player_move);
             true
         } else {

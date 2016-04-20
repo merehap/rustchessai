@@ -25,13 +25,14 @@ fn main() {
     let stdin = std::io::stdin();
 
     let mut player_1_text = String::new();
+    println!("What should player 1 be? Options: {:?}", players.keys().collect::<Vec<_>>());
     stdin.read_line(&mut player_1_text).unwrap();
-    let player_1 = &players[&player_1_text];
+    let player_1 = &players[&player_1_text.trim().to_owned()];
 
     let mut player_2_text = String::new();
+    println!("What should player 2 be? Options: {:?}", players.keys().collect::<Vec<_>>());
     stdin.read_line(&mut player_2_text).unwrap();
-    let player_2 = &players[&player_2_text];
-
+    let player_2 = &players[&player_2_text.trim().to_owned()];
 
     let mut game_state = GameState::opening_state();
     loop {
