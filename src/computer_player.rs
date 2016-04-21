@@ -26,7 +26,7 @@ fn computer_player<'a>(
         eval_function: Box<Fn(&GameState) -> i16>)
         -> Option<Move<'a>> {
 
-    if let Some((best_move, best_score)) = determine_best_move(initial_game_state, &eval_function, MAX_DEPTH) {
+    if let (Some(best_move), best_score) = determine_best_move(initial_game_state, &eval_function, MAX_DEPTH) {
         println!("Current score according to the {} AI ({:?}): {}",
             name,
             initial_game_state.current_player,
@@ -41,15 +41,21 @@ fn determine_best_move<'a>(
         initial_game_state: &'a GameState,
         eval_function: &Box<Fn(&GameState) -> i16>,
         ply: u8)
-        -> Option<(Move<'a>, i16)> {
+        -> (Option<Move<'a>>, i16) {
 
     if ply == 0 {
-        return None;
+        return (None, 0);
     }
 
     let moves = initial_game_state.get_player_moves(initial_game_state.current_player);
     if moves.is_empty() {
-        return None;
+        return (None, 0);
+    }
+
+    if !initial_game_state.get_all_pieces().iter()
+            .any(|piece| piece.color == initial_game_state.current_player && piece.piece_type == PieceType::King) {
+        // The King has been taken.
+        return (None, 1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 })
     }
 
     let current_player = initial_game_state.current_player;
@@ -59,14 +65,14 @@ fn determine_best_move<'a>(
     for piece_move in moves {
         let mut game_state = initial_game_state.clone();
         game_state.move_piece(&piece_move);
-        let score = if ply == 1 {
-            // Use the base, non-recursive heuristic if we are only looking ahead one move.
-            eval_function(&game_state)
-        } else {
+
+        let score = if ply > 1 {
             // Determine the other player's best move, returning 0 if there isn't a move,
             // indicating stalemate.
-            determine_best_move(&game_state, eval_function, ply - 1)
-                .map_or(0, |(_, s)| s)
+            determine_best_move(&game_state, eval_function, ply - 1).1
+        } else {
+            // Use the base, non-recursive heuristic if we are only looking ahead one move.
+            eval_function(&game_state)
         };
 
         if (current_player == Color::White && score > best_score)
@@ -76,7 +82,7 @@ fn determine_best_move<'a>(
         }
     }
 
-    Some((best_move, best_score))
+    (Some(best_move), best_score)
 }
 
 fn max_moves_eval(game_state: &GameState) -> i16 {
