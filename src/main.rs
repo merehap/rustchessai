@@ -1,5 +1,3 @@
-#![feature(plugin)]
-#![plugin(clippy)]
 
 mod piece_type;
 mod position;

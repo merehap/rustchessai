@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use piece_type::PieceType;
 use position::Position;
 use piece_move::Move;
@@ -85,9 +87,11 @@ pub struct GameState {
     board: [[Option<Piece>; 8]; 8],
     // Located here so we don't have to sweep the board of en passant targets after each turn.
     en_passant_target: Option<Position>,
+    previous_state_counts: HashMap<String, u8>,
 }
 
 impl GameState {
+
     pub fn opening_state() -> GameState {
         // White on top so that (0,0) matches up with a1. Flipped for the actual display.
         let raw_board =
@@ -107,10 +111,14 @@ impl GameState {
             }
         }
 
+        let mut previous_state_counts = HashMap::new();
+        previous_state_counts.insert(GameState::custom_hash(board), 1);
         GameState {
             board: board,
             current_player: Color::White,
             en_passant_target: Option::None,
+            previous_state_counts: previous_state_counts,
+
         }
     }
 
@@ -200,6 +208,14 @@ impl GameState {
         } else {
             Color::White
         };
+
+        // Update the map of previous states
+        let hash = GameState::custom_hash(self.board);
+        if self.previous_state_counts.contains_key(&hash) {
+            *self.previous_state_counts.get_mut(&hash).unwrap() += 1;
+        } else {
+            self.previous_state_counts.insert(hash, 1);
+        }
     }
 
     fn is_in_bounds(&self, position: &Position) -> bool {
@@ -216,6 +232,19 @@ impl GameState {
 
     fn is_empty(&self, position: &Position) -> bool {
         self.get_piece(position).is_none()
+    }
+
+    // Can't figure out how to get actual Rust hashing working.
+    // This function is too simple since it doesn't account for special states like en passant.
+    fn custom_hash(board: [[Option<Piece>; 8]; 8]) -> String {
+        let mut chars = vec![];
+        for i in 0..8 {
+            for j in 0..8 {
+                chars.push(board[i][j].map_or('-', |p| p.to_char()));
+            }
+        }
+
+        chars.into_iter().collect::<String>()
     }
 
     pub fn get_player_moves(&self, color: Color) -> Vec<Move> {
@@ -434,7 +463,7 @@ enum OccupationStatus {
     Enemy,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Hash)]
 pub struct Piece {
     pub color: Color,
     pub piece_type: PieceType,
@@ -494,7 +523,7 @@ impl ToPiece for char {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Hash)]
 pub enum Color {
     White,
     Black
