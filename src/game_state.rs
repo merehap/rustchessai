@@ -91,7 +91,6 @@ pub struct GameState {
 }
 
 impl GameState {
-
     pub fn opening_state() -> GameState {
         // White on top so that (0,0) matches up with a1. Flipped for the actual display.
         let raw_board =
@@ -454,6 +453,31 @@ impl GameState {
             None
         }
     }
+
+    pub fn get_end_state(&self, moves: &Vec<Move>) -> EndState {
+        if moves.is_empty() {
+            return EndState::Stalemate;
+        }
+
+        if self.previous_state_counts.values().any(|&count| count >= 3) {
+            return EndState::Stalemate;
+        }
+
+        if !self.get_all_pieces().iter()
+                .any(|piece| piece.color == self.current_player && piece.piece_type == PieceType::King) {
+            // The King has been taken.
+            return EndState::Win(self.current_player.opposite());
+        }
+
+        EndState::NotEnded
+    }
+}
+
+#[derive(PartialEq)]
+pub enum EndState {
+    NotEnded,
+    Win(Color),
+    Stalemate,
 }
 
 #[derive(PartialEq)]
@@ -527,4 +551,13 @@ impl ToPiece for char {
 pub enum Color {
     White,
     Black
+}
+
+impl Color {
+    fn opposite(&self) -> Color {
+        match *self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
 }

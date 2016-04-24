@@ -5,6 +5,7 @@ use piece_type::PieceType::*;
 use piece_move::Move;
 use game_state::GameState;
 use game_state::Color;
+use game_state::EndState;
 
 const MAX_DEPTH: u8 = 4;
 
@@ -48,18 +49,10 @@ fn determine_best_move<'a>(
     }
 
     let moves = initial_game_state.get_player_moves(initial_game_state.current_player);
-    if moves.is_empty() {
-        return (None, 0);
-    }
-
-    if initial_game_state.previous_state_counts.values().any(|&count| count >= 3) {
-        return (None, 0);
-    }
-
-    if !initial_game_state.get_all_pieces().iter()
-            .any(|piece| piece.color == initial_game_state.current_player && piece.piece_type == PieceType::King) {
-        // The King has been taken.
-        return (None, 1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 })
+    match initial_game_state.get_end_state(&moves) {
+        EndState::NotEnded => (),
+        EndState::Win(_) => return (None, 1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
+        EndState::Stalemate => return (None, 0),
     }
 
     let current_player = initial_game_state.current_player;
