@@ -52,6 +52,10 @@ fn determine_best_move<'a>(
         return (None, 0);
     }
 
+    if initial_game_state.previous_state_counts.values().any(|&count| count >= 3) {
+        return (None, 0);
+    }
+
     if !initial_game_state.get_all_pieces().iter()
             .any(|piece| piece.color == initial_game_state.current_player && piece.piece_type == PieceType::King) {
         // The King has been taken.

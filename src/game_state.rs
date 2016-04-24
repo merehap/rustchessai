@@ -87,7 +87,7 @@ pub struct GameState {
     board: [[Option<Piece>; 8]; 8],
     // Located here so we don't have to sweep the board of en passant targets after each turn.
     en_passant_target: Option<Position>,
-    previous_state_counts: HashMap<String, u8>,
+    pub previous_state_counts: HashMap<String, u8>,
 }
 
 impl GameState {
