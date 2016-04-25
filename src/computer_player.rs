@@ -91,6 +91,7 @@ fn max_moves_eval(game_state: &GameState) -> i16 {
     piece_score + move_score as i16
 }
 
+const SPACE_SCORE_MULTIPLIER = 3;
 fn max_spaces_eval(game_state: &GameState) -> i16 {
     let piece_score = piece_score_eval(&game_state);
 
@@ -110,8 +111,8 @@ fn max_spaces_eval(game_state: &GameState) -> i16 {
     for col in 0..8 {
         for row in 0..8 {
             match ownership_grid[row][col].cmp(&0) {
-                Ordering::Less => space_score -= 1,
-                Ordering::Greater => space_score += 1,
+                Ordering::Less => space_score -= SPACE_SCORE_MULTIPLIER,
+                Ordering::Greater => space_score += SPACE_SCORE_MULTIPLIER,
                 _ => (),
             }
         }
