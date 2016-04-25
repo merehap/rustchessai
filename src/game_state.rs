@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use piece_type::PieceType;
 use position::Position;
@@ -87,6 +88,7 @@ pub struct GameState {
     board: [[Option<Piece>; 8]; 8],
     // Located here so we don't have to sweep the board of en passant targets after each turn.
     en_passant_target: Option<Position>,
+    previous_player_dests: HashSet<Position>,
     pub previous_state_counts: HashMap<String, u8>,
 }
 
@@ -116,8 +118,8 @@ impl GameState {
             board: board,
             current_player: Color::White,
             en_passant_target: Option::None,
+            previous_player_dests: HashSet::new(),
             previous_state_counts: previous_state_counts,
-
         }
     }
 
@@ -202,12 +204,6 @@ impl GameState {
             self.en_passant_target = Some(player_move.destination.clone());
         }
 
-        self.current_player = if self.current_player == Color::White {
-            Color::Black
-        } else {
-            Color::White
-        };
-
         // Update the map of previous states
         let hash = GameState::custom_hash(self.board);
         if self.previous_state_counts.contains_key(&hash) {
@@ -215,6 +211,14 @@ impl GameState {
         } else {
             self.previous_state_counts.insert(hash, 1);
         }
+
+        self.previous_player_dests = self.get_player_moves(self.current_player).iter().map(|m| m.destination.clone()).collect();
+
+        self.current_player = if self.current_player == Color::White {
+            Color::Black
+        } else {
+            Color::White
+        };
     }
 
     fn is_in_bounds(&self, position: &Position) -> bool {
@@ -361,7 +365,8 @@ impl GameState {
 
             },
             PieceType::King => {
-                moves.append(&mut self.get_consecutive_moves(
+                let mut possible_moves = vec![];
+                possible_moves.append(&mut self.get_consecutive_moves(
                         source,
                         &[(-1,-1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
                         Some(1)
@@ -372,7 +377,7 @@ impl GameState {
                     let left_rook_position = Position { column: 0, row: row };
                     if self.get_piece(&left_rook_position).map_or(false, |piece| piece.can_castle)
                             && self.are_all_empty(&[(1,row), (2,row), (3,row)]) {
-                        moves.push(if piece.color == Color::White {
+                        possible_moves.push(if piece.color == Color::White {
                             WHITE_LEFT_CASTLE.clone()
                         } else {
                             BLACK_LEFT_CASTLE.clone()
@@ -381,14 +386,18 @@ impl GameState {
 
                     if self.get_piece(&Position { column: 7, row: row}).map_or(false, |piece| piece.can_castle)
                             && self.are_all_empty(&[(5,row), (6,row)]) {
-                        moves.push(if piece.color == Color::White {
+                        possible_moves.push(if piece.color == Color::White {
                             WHITE_RIGHT_CASTLE.clone()
                         } else {
                             BLACK_RIGHT_CASTLE.clone()
                         });
                     }
-                }
 
+                    // Remove moves that would place the king into check.
+                    moves.append(&mut possible_moves.into_iter()
+                            .filter(|m| !self.previous_player_dests.contains(&m.destination))
+                            .collect::<Vec<_>>());
+                }
             },
         }
 

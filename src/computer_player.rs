@@ -91,7 +91,8 @@ fn max_moves_eval(game_state: &GameState) -> i16 {
     piece_score + move_score as i16
 }
 
-const SPACE_SCORE_MULTIPLIER = 3;
+const SPACE_SCORE_MULTIPLIER: i16 = 3;
+
 fn max_spaces_eval(game_state: &GameState) -> i16 {
     let piece_score = piece_score_eval(&game_state);
 
