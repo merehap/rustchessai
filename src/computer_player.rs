@@ -9,25 +9,28 @@ use game_state::EndState;
 
 const MAX_DEPTH: u8 = 4;
 
-pub fn max_spaces_comp(initial_game_state: &GameState) -> Option<Move> {
-    computer_player(initial_game_state, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
+pub fn max_spaces_comp<'a>(initial_game_state: &'a GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
+    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
 }
 
-pub fn max_moves_comp(initial_game_state: &GameState) -> Option<Move> {
-    computer_player(initial_game_state, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
+pub fn max_moves_comp<'a>(initial_game_state: &'a GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
+    computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
 }
 
-pub fn piece_score_comp(initial_game_state: &GameState) -> Option<Move> {
-    computer_player(initial_game_state, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
+pub fn piece_score_comp<'a>(initial_game_state: &'a GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
+    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
 }
 
 fn computer_player<'a>(
         initial_game_state: &'a GameState,
+        moves: &Vec<Move<'a>>,
         name: String,
         eval_function: Box<Fn(&GameState) -> i16>)
         -> Option<Move<'a>> {
 
-    if let (Some(best_move), best_score) = determine_best_move(initial_game_state, &eval_function, MAX_DEPTH) {
+    if let (Some(best_move), best_score) =
+            determine_best_move(&initial_game_state, moves, &eval_function, MAX_DEPTH) {
+
         println!("Current score according to the {} AI ({:?}): {}",
             name,
             initial_game_state.current_player,
@@ -40,6 +43,7 @@ fn computer_player<'a>(
 
 fn determine_best_move<'a>(
         initial_game_state: &'a GameState,
+        moves: &Vec<Move<'a>>,
         eval_function: &Box<Fn(&GameState) -> i16>,
         ply: u8)
         -> (Option<Move<'a>>, i16) {
@@ -48,10 +52,11 @@ fn determine_best_move<'a>(
         return (None, 0);
     }
 
-    let moves = initial_game_state.get_player_moves(initial_game_state.current_player);
     match initial_game_state.get_end_state(&moves) {
         EndState::NotEnded => (),
-        EndState::Win(_) => return (None, 1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
+        EndState::Win(_) => return (
+            None,
+            1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
         EndState::Stalemate => return (None, 0),
     }
 
@@ -61,12 +66,13 @@ fn determine_best_move<'a>(
     let mut best_move = moves[0].clone();
     for piece_move in moves {
         let mut game_state = initial_game_state.clone();
-        game_state.move_piece(&piece_move);
+        game_state.move_piece(moves, &piece_move);
 
         let score = if ply > 1 {
             // Determine the other player's best move, returning 0 if there isn't a move,
             // indicating stalemate.
-            determine_best_move(&game_state, eval_function, ply - 1).1
+            let next_moves = game_state.get_player_moves(game_state.current_player);
+            determine_best_move(&game_state, &next_moves, eval_function, ply - 1).1
         } else {
             // Use the base, non-recursive heuristic if we are only looking ahead one move.
             eval_function(&game_state)

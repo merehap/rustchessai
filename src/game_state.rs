@@ -139,13 +139,19 @@ impl GameState {
         result
     }
 
-    pub fn play_turn(&mut self, player_brain: &Box<Fn(&GameState) -> Option<Move>>) -> bool {
-        let game_state = self.clone();
-        if let Some(player_move) = player_brain(&game_state) {
+    pub fn play_turn<'a>(
+            &'a mut self,
+            extra_self: &'a GameState,
+            player_brain:
+                Box<Fn(&'a GameState, &Vec<Move<'a>>) -> Option<Move<'a>>>) -> bool {
+
+        let mut moves = extra_self.get_player_moves(extra_self.current_player);
+        
+        if let Some(player_move) = player_brain(&extra_self, &moves) {
             println!("{:?} played {}",
-                self.current_player,
+                extra_self.current_player,
                 player_move.simple_format());
-            self.move_piece(&player_move);
+            self.move_piece(&moves, &player_move);
             true
         } else {
             false
@@ -173,7 +179,7 @@ impl GameState {
         self.board[position.row as usize][position.column as usize] = *piece;
     }
 
-    pub fn move_piece(&mut self, player_move: &Move) {
+    pub fn move_piece(&mut self, possible_moves: &Vec<Move>, player_move: &Move) {
         // En passant is only possible for the turn after it was enabled.
         self.en_passant_target = None;
 
@@ -212,7 +218,7 @@ impl GameState {
             self.previous_state_counts.insert(hash, 1);
         }
 
-        self.previous_player_dests = self.get_player_moves(self.current_player).iter().map(|m| m.destination.clone()).collect();
+        self.previous_player_dests = possible_moves.iter().map(|m| m.destination.clone()).collect();
 
         self.current_player = if self.current_player == Color::White {
             Color::Black

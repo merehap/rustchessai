@@ -3,8 +3,7 @@ use std::io;
 use piece_move::Move;
 use game_state::GameState;
 
-pub fn human_player(game_state: &GameState) -> Option<Move> {
-    let moves = game_state.get_player_moves(game_state.current_player);
+pub fn human_player<'a>(game_state: &GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
     loop {
         println!("Enter a move:");
         let mut input = String::new();
