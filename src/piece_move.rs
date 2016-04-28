@@ -2,47 +2,51 @@ use position::Position;
 use piece_type::PieceType;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Move<'a> {
+pub struct Move {
     pub source: Position,
     pub destination: Position,
     pub enables_en_passant: bool,
     pub en_passant_target: Option<Position>,
-    pub extra_castling_move: &'a Option<Move<'a>>,
+    pub extra_castling_move: Option<ExtraCastlingMove>,
     pub promotion_piece_type: Option<PieceType>
 }
 
-static NONE: Option<Move<'static>> = None;
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExtraCastlingMove {
+    pub source: Position,
+    pub destination: Position,
+}
 
-impl<'a> Move<'a> {
-    pub fn simple(source: Position, destination: Position) -> Move<'a> {
+impl Move {
+    pub fn simple(source: Position, destination: Position) -> Move {
         Move {
             source: source,
             destination: destination,
             enables_en_passant: false,
             en_passant_target: None,
-            extra_castling_move: &NONE,
+            extra_castling_move: None,
             promotion_piece_type: None,
         }
     }
 
-    pub fn en_passant(source: Position, destination: Position, target: Position) -> Move<'a> {
+    pub fn en_passant(source: Position, destination: Position, target: Position) -> Move {
         Move {
             source: source,
             destination: destination,
             enables_en_passant: false,
             en_passant_target: Some(target),
-            extra_castling_move: &NONE,
+            extra_castling_move: None,
             promotion_piece_type: None,
         }
     }
 
-    pub fn en_passant_enabler(source: Position, destination: Position) -> Move<'a> {
+    pub fn en_passant_enabler(source: Position, destination: Position) -> Move {
         Move {
             source: source,
             destination: destination,
             enables_en_passant: true,
             en_passant_target: None,
-            extra_castling_move: &NONE,
+            extra_castling_move: None,
             promotion_piece_type: None,
         }
     }
@@ -50,24 +54,28 @@ impl<'a> Move<'a> {
     // Ideally this would take a Move rather than an Option<Move>,
     // but I couldn't figure out how to get the lifetime correct on the inlined Some().
     // I was able to do this for the None cases by referencing a static constant in global scope.
-    pub fn castle(source: Position, destination: Position, extra_castling_move: &'a Option<Move<'a>>) -> Move<'a> {
+    pub fn castle(
+            source: Position,
+            destination: Position,
+            extra_castling_move: ExtraCastlingMove) -> Move {
+
         Move {
             source: source,
             destination: destination,
             enables_en_passant: false,
             en_passant_target: None,
-            extra_castling_move: extra_castling_move,
+            extra_castling_move: Some(extra_castling_move),
             promotion_piece_type: None,
         }
     }
 
-    pub fn promotion(source: Position, destination: Position, promotion_piece_type: PieceType) -> Move<'a> {
+    pub fn promotion(source: Position, destination: Position, promotion_piece_type: PieceType) -> Move {
         Move {
             source: source,
             destination: destination,
             enables_en_passant: false,
             en_passant_target: None,
-            extra_castling_move: &NONE,
+            extra_castling_move: None,
             promotion_piece_type: Some(promotion_piece_type),
         }
     }

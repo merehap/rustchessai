@@ -4,79 +4,64 @@ use std::collections::HashSet;
 use piece_type::PieceType;
 use position::Position;
 use piece_move::Move;
+use piece_move::ExtraCastlingMove;
 
-static NONE: Option<Move<'static>> = None;
-
-static WHITE_LEFT_ROOK_MOVE: Option<Move<'static>> =
-    Some(Move {
+const WHITE_LEFT_ROOK_MOVE: Option<ExtraCastlingMove> =
+    Some(ExtraCastlingMove {
         source: Position{column: 0, row: 0},
         destination: Position {column: 3, row: 0},
-        extra_castling_move: &NONE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None,
         });
-static WHITE_LEFT_CASTLE: Move<'static> =
+static WHITE_LEFT_CASTLE: Move =
     Move {
         source: Position {column: 4, row: 0},
         destination: Position {column: 2, row: 0},
-        extra_castling_move: &WHITE_LEFT_ROOK_MOVE,
+        extra_castling_move: WHITE_LEFT_ROOK_MOVE,
         enables_en_passant: false,
         en_passant_target: None,
         promotion_piece_type: None, 
     };
 
-static WHITE_RIGHT_ROOK_MOVE: Option<Move<'static>> =
-    Some(Move {
+const WHITE_RIGHT_ROOK_MOVE: Option<ExtraCastlingMove> =
+    Some(ExtraCastlingMove {
         source: Position {column: 7, row: 0},
         destination: Position {column: 5, row: 0},
-        extra_castling_move: &NONE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None, 
         });
-static WHITE_RIGHT_CASTLE: Move<'static> =
+static WHITE_RIGHT_CASTLE: Move =
     Move {
         source: Position {column: 4, row: 0},
         destination: Position {column: 6, row: 0},
-        extra_castling_move: &WHITE_RIGHT_ROOK_MOVE,
+        extra_castling_move: WHITE_RIGHT_ROOK_MOVE,
         enables_en_passant: false,
         en_passant_target: None,
         promotion_piece_type: None,
     };
 
-static BLACK_LEFT_ROOK_MOVE: Option<Move<'static>> =
-    Some(Move {
+const BLACK_LEFT_ROOK_MOVE: Option<ExtraCastlingMove> =
+    Some(ExtraCastlingMove {
         source: Position {column: 0, row: 7},
         destination: Position {column: 3, row: 7},
-        extra_castling_move: &NONE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None,
-    }); static BLACK_LEFT_CASTLE: Move<'static> =
+    });
+
+static BLACK_LEFT_CASTLE: Move =
     Move {
         source: Position {column: 4, row: 7},
         destination: Position {column: 2, row: 7},
-        extra_castling_move: &BLACK_LEFT_ROOK_MOVE,
+        extra_castling_move: BLACK_LEFT_ROOK_MOVE,
         enables_en_passant: false,
         en_passant_target: None,
         promotion_piece_type: None,
     };
 
-static BLACK_RIGHT_ROOK_MOVE: Option<Move<'static>> =
-    Some(Move {
+const BLACK_RIGHT_ROOK_MOVE: Option<ExtraCastlingMove> =
+    Some(ExtraCastlingMove {
         source: Position {column: 7, row: 7},
         destination: Position {column: 5, row: 7},
-        extra_castling_move: &NONE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None,
     });
-static BLACK_RIGHT_CASTLE: Move<'static> =
+static BLACK_RIGHT_CASTLE: Move =
     Move {
         source: Position {column: 4, row: 7},
         destination: Position {column: 6, row: 7},
-        extra_castling_move: &BLACK_RIGHT_ROOK_MOVE,
+        extra_castling_move: BLACK_RIGHT_ROOK_MOVE,
         enables_en_passant: false,
         en_passant_target: None,
         promotion_piece_type: None,
@@ -139,17 +124,17 @@ impl GameState {
         result
     }
 
-    pub fn play_turn<'a>(
-            &'a mut self,
-            extra_self: &'a GameState,
+    pub fn play_turn(
+            &mut self,
             player_brain:
-                Box<Fn(&'a GameState, &Vec<Move<'a>>) -> Option<Move<'a>>>) -> bool {
+                &Box<Fn(&GameState, &Vec<Move>) -> Option<Move>>) -> bool {
 
-        let mut moves = extra_self.get_player_moves(extra_self.current_player);
+        let game_state = self.clone();
+        let moves = game_state.get_player_moves(game_state.current_player);
         
-        if let Some(player_move) = player_brain(&extra_self, &moves) {
+        if let Some(player_move) = player_brain(&game_state, &moves) {
             println!("{:?} played {}",
-                extra_self.current_player,
+                game_state.current_player,
                 player_move.simple_format());
             self.move_piece(&moves, &player_move);
             true

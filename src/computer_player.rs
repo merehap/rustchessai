@@ -9,24 +9,24 @@ use game_state::EndState;
 
 const MAX_DEPTH: u8 = 4;
 
-pub fn max_spaces_comp<'a>(initial_game_state: &'a GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
+pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Option<Move> {
     computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
 }
 
-pub fn max_moves_comp<'a>(initial_game_state: &'a GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
+pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Option<Move> {
     computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
 }
 
-pub fn piece_score_comp<'a>(initial_game_state: &'a GameState, moves: &Vec<Move<'a>>) -> Option<Move<'a>> {
+pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Option<Move> {
     computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
 }
 
-fn computer_player<'a>(
-        initial_game_state: &'a GameState,
-        moves: &Vec<Move<'a>>,
+fn computer_player(
+        initial_game_state: &GameState,
+        moves: &Vec<Move>,
         name: String,
         eval_function: Box<Fn(&GameState) -> i16>)
-        -> Option<Move<'a>> {
+        -> Option<Move> {
 
     if let (Some(best_move), best_score) =
             determine_best_move(&initial_game_state, moves, &eval_function, MAX_DEPTH) {
@@ -41,12 +41,12 @@ fn computer_player<'a>(
     None
 }
 
-fn determine_best_move<'a>(
-        initial_game_state: &'a GameState,
-        moves: &Vec<Move<'a>>,
+fn determine_best_move(
+        initial_game_state: &GameState,
+        moves: &Vec<Move>,
         eval_function: &Box<Fn(&GameState) -> i16>,
         ply: u8)
-        -> (Option<Move<'a>>, i16) {
+        -> (Option<Move>, i16) {
 
     if ply == 0 {
         return (None, 0);
