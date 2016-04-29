@@ -248,7 +248,8 @@ impl GameState {
                 let position = &Position { column: column, row: row };
                 let piece = self.get_piece(position);
                 if piece.map_or(false, |p| p.color == color) {
-                    moves.append(&mut self.get_moves_for_piece(position));
+                    let (mut piece_moves, _) = self.get_moves_for_piece(position);
+                    moves.append(&mut piece_moves);
                 }
             }
         }
@@ -256,13 +257,14 @@ impl GameState {
         moves
     }
 
-    fn get_moves_for_piece(&self, source: &Position) -> Vec<Move> {
+    fn get_moves_for_piece(&self, source: &Position) -> (Vec<Move>, bool) {
         let maybe_piece = self.get_piece(source);
         if maybe_piece.is_none() {
-            return vec![];
+            return (vec![], false);
         }
 
         let piece = maybe_piece.unwrap();
+        let mut is_in_check = false;
         let mut moves = vec![];
         
         match piece.piece_type {
@@ -388,11 +390,15 @@ impl GameState {
                     moves.append(&mut possible_moves.into_iter()
                             .filter(|m| !self.previous_player_dests.contains(&m.destination))
                             .collect::<Vec<_>>());
+
+                    if self.previous_player_dests.contains(&source) {
+                        is_in_check = true;
+                    }
                 }
             },
         }
 
-        moves
+        (moves, is_in_check)
     }
 
     fn get_consecutive_moves(
