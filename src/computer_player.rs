@@ -28,43 +28,43 @@ fn computer_player(
         eval_function: Box<Fn(&GameState) -> i16>)
         -> Option<Move> {
 
-    if let (Some(best_move), best_score) =
-            determine_best_move(&initial_game_state, moves, &eval_function, MAX_DEPTH) {
+    if let [(ref best_move, best_score), ..] =
+            determine_best_moves(&initial_game_state, moves, &eval_function, MAX_DEPTH).0.as_slice() {
 
         println!("Current score according to the {} AI ({:?}): {}",
             name,
             initial_game_state.current_player,
             best_score);
         println!("Total moves possible: {}", moves.len());
-        return Some(best_move);
+        return Some(best_move.clone());
     }
 
     None
 }
 
-fn determine_best_move(
+// Returns a list of pairs of moves with scores, sorted from best to worst.
+fn determine_best_moves(
         initial_game_state: &GameState,
         moves: &Vec<Move>,
         eval_function: &Box<Fn(&GameState) -> i16>,
         ply: u8)
-        -> (Option<Move>, i16) {
+        -> (Vec<(Move, i16)>, i16) {
 
     if ply == 0 {
-        return (None, 0);
+        return (vec![], 0);
     }
 
     match initial_game_state.get_end_state(&moves) {
         EndState::NotEnded => (),
         EndState::Win(_) => return (
-            None,
+            vec![],
             1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
-        EndState::Stalemate => return (None, 0),
+        EndState::Stalemate => return (vec![], 0),
     }
 
     let current_player = initial_game_state.current_player;
-    let mut best_score = if current_player == Color::White { i16::min_value() } else { i16::max_value() };
 
-    let mut best_move = moves[0].clone();
+    let mut move_scores: Vec<(Move, i16)> = vec![];
     for piece_move in moves {
         let mut game_state = initial_game_state.clone();
         game_state.move_piece(moves, &piece_move);
@@ -73,20 +73,22 @@ fn determine_best_move(
             // Determine the other player's best move, returning 0 if there isn't a move,
             // indicating stalemate.
             let next_moves = game_state.get_player_moves_without_check(game_state.current_player);
-            determine_best_move(&game_state, &next_moves, eval_function, ply - 1).1
+            match determine_best_moves(&game_state, &next_moves, eval_function, ply - 1) {
+                (_, score) => score,
+            }
         } else {
             // Use the base, non-recursive heuristic if we are only looking ahead one move.
             eval_function(&game_state)
         };
 
-        if (current_player == Color::White && score > best_score)
-                || (current_player == Color::Black && score < best_score) {
-            best_score = score;
-            best_move = piece_move.clone();
-        }
+        move_scores.push((piece_move.clone(), score));
     }
 
-    (Some(best_move), best_score)
+    move_scores.sort_by(|&(_, score0), &(_, score1)|
+        if current_player == Color::White { score1.cmp(&score0) } else { score0.cmp(&score1) });
+
+    let best_score = move_scores[0].1.clone();
+    (move_scores, best_score)
 }
 
 fn max_moves_eval(game_state: &GameState) -> i16 {

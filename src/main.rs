@@ -1,3 +1,4 @@
+#![feature(advanced_slice_patterns, slice_patterns)]
 
 mod piece_type;
 mod position;
