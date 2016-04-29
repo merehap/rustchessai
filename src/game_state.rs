@@ -130,7 +130,7 @@ impl GameState {
                 &Box<Fn(&GameState, &Vec<Move>) -> Option<Move>>) -> bool {
 
         let game_state = self.clone();
-        let moves = game_state.get_player_moves(game_state.current_player);
+        let moves = game_state.get_player_moves();
         
         if let Some(player_move) = player_brain(&game_state, &moves) {
             println!("{:?} played {}",
@@ -241,30 +241,57 @@ impl GameState {
         chars.into_iter().collect::<String>()
     }
 
-    pub fn get_player_moves(&self, color: Color) -> Vec<Move> {
+    pub fn get_player_moves(&self) -> Vec<Move> {
+        let (moves, king_info) = self.get_player_moves_base(self.current_player);
+        match king_info {
+            // No king was found on the board.
+            None => vec![],
+            Some((source, true)) => {
+                moves.clone().into_iter().filter(|piece_move| {
+                    let mut game_state = self.clone();
+                    game_state.move_piece(&moves, &piece_move);
+                    let (opponent_moves, _) = game_state.get_player_moves_base(
+                        game_state.current_player);
+                    !opponent_moves.iter().any(|opponent_move| opponent_move.destination == source)
+                }).collect::<Vec<_>>()
+            },
+            _ => moves,
+        }
+    }
+
+    pub fn get_player_moves_without_check(&self, color: Color) -> Vec<Move> {
+        self.get_player_moves_base(color).0
+    }
+
+    fn get_player_moves_base(&self, color: Color) -> (Vec<Move>, Option<(Position, bool)>) {
         let mut moves = vec![];
+        let mut king_info = None;
         for row in 0..8 {
             for column in 0..8 {
                 let position = &Position { column: column, row: row };
                 let piece = self.get_piece(position);
                 if piece.map_or(false, |p| p.color == color) {
-                    let (mut piece_moves, _) = self.get_moves_for_piece(position);
+                    let (mut piece_moves, temp_king_info) = self.get_moves_for_piece(position);
+                    if temp_king_info.is_some() {
+                        king_info = temp_king_info;
+                    }
+
                     moves.append(&mut piece_moves);
                 }
             }
         }
 
-        moves
+        (moves, king_info)
     }
 
-    fn get_moves_for_piece(&self, source: &Position) -> (Vec<Move>, bool) {
+    fn get_moves_for_piece(&self, source: &Position) -> (Vec<Move>, Option<(Position, bool)>) {
         let maybe_piece = self.get_piece(source);
         if maybe_piece.is_none() {
-            return (vec![], false);
+            return (vec![], None);
         }
 
         let piece = maybe_piece.unwrap();
-        let mut is_in_check = false;
+        let mut king_info = None;
         let mut moves = vec![];
         
         match piece.piece_type {
@@ -391,14 +418,14 @@ impl GameState {
                             .filter(|m| !self.previous_player_dests.contains(&m.destination))
                             .collect::<Vec<_>>());
 
-                    if self.previous_player_dests.contains(&source) {
-                        is_in_check = true;
-                    }
+
+                    // Note the king's position and if it is in check.
+                    king_info = Some((source.clone(), self.previous_player_dests.contains(&source)));
                 }
             },
         }
 
-        (moves, is_in_check)
+        (moves, king_info)
     }
 
     fn get_consecutive_moves(

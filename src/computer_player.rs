@@ -35,6 +35,7 @@ fn computer_player(
             name,
             initial_game_state.current_player,
             best_score);
+        println!("Total moves possible: {}", moves.len());
         return Some(best_move);
     }
 
@@ -71,7 +72,7 @@ fn determine_best_move(
         let score = if ply > 1 {
             // Determine the other player's best move, returning 0 if there isn't a move,
             // indicating stalemate.
-            let next_moves = game_state.get_player_moves(game_state.current_player);
+            let next_moves = game_state.get_player_moves_without_check(game_state.current_player);
             determine_best_move(&game_state, &next_moves, eval_function, ply - 1).1
         } else {
             // Use the base, non-recursive heuristic if we are only looking ahead one move.
@@ -91,8 +92,8 @@ fn determine_best_move(
 fn max_moves_eval(game_state: &GameState) -> i16 {
     let piece_score = piece_score_eval(&game_state); 
 
-    let move_score = game_state.get_player_moves(Color::White).len() as i16
-            - game_state.get_player_moves(Color::Black).len() as i16;
+    let move_score = game_state.get_player_moves_without_check(Color::White).len() as i16
+            - game_state.get_player_moves_without_check(Color::Black).len() as i16;
 
     piece_score + move_score as i16
 }
@@ -104,12 +105,12 @@ fn max_spaces_eval(game_state: &GameState) -> i16 {
 
     let mut ownership_grid = [[0; 8]; 8];
 
-    for white_move in game_state.get_player_moves(Color::White) {
+    for white_move in game_state.get_player_moves_without_check(Color::White) {
         let dest = white_move.destination.clone();
         ownership_grid[dest.row as usize][dest.column as usize] += 1;
     }
 
-    for white_move in game_state.get_player_moves(Color::Black) {
+    for white_move in game_state.get_player_moves_without_check(Color::Black) {
         let dest = white_move.destination.clone();
         ownership_grid[dest.row as usize][dest.column as usize] -= 1;
     }
