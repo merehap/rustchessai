@@ -28,17 +28,22 @@ fn computer_player(
         eval_function: Box<Fn(&GameState) -> i16>)
         -> Option<Move> {
 
-    if let [(ref best_move, best_score), ..] =
-            determine_best_moves(&initial_game_state, moves, &eval_function, MAX_DEPTH).0.as_slice() {
-
-        println!("Current score according to the {} AI ({:?}): {}",
+    let move_scores = determine_best_moves(&initial_game_state, moves, &eval_function, MAX_DEPTH).0;
+    if let [(ref best_move, best_score), ..] = move_scores.as_slice() {
+        println!("Total moves possible: {}", move_scores.len());
+        println!("Best moves according to the {} AI ({:?}):\n{}", 
             name,
             initial_game_state.current_player,
-            best_score);
-        println!("Total moves possible: {}", moves.len());
+            move_scores.clone().into_iter()
+                 .take(5)
+                 .fold("".to_owned(), |mut text, (piece_move, score)| {
+                       text.push_str(format!("{}: {}, ", piece_move.simple_format(), score).as_str());
+                       text
+                 }));
         return Some(best_move.clone());
     }
 
+    println!("No moves returned by player {:?}", initial_game_state.current_player);
     None
 }
 
@@ -51,7 +56,7 @@ fn determine_best_moves(
         -> (Vec<(Move, i16)>, i16) {
 
     if ply == 0 {
-        return (vec![], 0);
+        panic!("Zero ply specified!");
     }
 
     match initial_game_state.get_end_state(&moves) {
@@ -59,7 +64,9 @@ fn determine_best_moves(
         EndState::Win(_) => return (
             vec![],
             1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
-        EndState::Stalemate => return (vec![], 0),
+        EndState::Stalemate => return (
+            moves.iter().zip([0].iter().cycle()).map(|(s, c)| (s.clone(), c.clone())).collect::<Vec<_>>(),
+            0),
     }
 
     let current_player = initial_game_state.current_player;
