@@ -338,21 +338,21 @@ impl GameState {
                             && self.are_all_empty(&[(1,row), (2,row), (3,row)]) {
 
                         let rook_move = ExtraCastlingMove {
-                            source: source.clone(),
-                            destination: source.relative(-3, 0),
+                            source: source.relative(-4, 0),
+                            destination: source.relative(-1, 0),
                         };
                         possible_moves.push(
-                            Move::castle(source.relative(-4, 0), source.relative(-1, 0), rook_move));
+                            Move::castle(source.clone(), source.relative(-2, 0), rook_move));
                     }
 
                     if self.get_piece(&Position { column: 7, row: row}).map_or(false, |piece| piece.can_castle)
                             && self.are_all_empty(&[(5,row), (6,row)]) {
                         let rook_move = ExtraCastlingMove {
-                            source: source.clone(),
-                            destination: source.relative(2, 0),
+                            source: source.relative(3, 0),
+                            destination: source.relative(1, 0),
                         };
                         possible_moves.push(
-                            Move::castle(source.relative(3, 0), source.relative(1, 0), rook_move));
+                            Move::castle(source.clone(), source.relative(2, 0), rook_move));
                     }
 
                     // Remove moves that would place the king into check.
