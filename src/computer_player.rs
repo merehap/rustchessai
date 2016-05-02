@@ -29,9 +29,9 @@ fn computer_player(
         -> Option<Move> {
 
     let move_scores = determine_best_moves(&initial_game_state, moves, &eval_function, MAX_DEPTH).0;
-    if let [(ref best_move, best_score), ..] = move_scores.as_slice() {
+    if let [(ref best_move, _), ..] = move_scores.as_slice() {
         println!("Total moves possible: {}", move_scores.len());
-        println!("Best moves according to the {} AI ({:?}):\n{}", 
+        println!("Best moves according to the {} AI ({:?}):\n{}",
             name,
             initial_game_state.current_player,
             move_scores.clone().into_iter()

@@ -6,67 +6,6 @@ use position::Position;
 use piece_move::Move;
 use piece_move::ExtraCastlingMove;
 
-const WHITE_LEFT_ROOK_MOVE: Option<ExtraCastlingMove> =
-    Some(ExtraCastlingMove {
-        source: Position{column: 0, row: 0},
-        destination: Position {column: 3, row: 0},
-        });
-static WHITE_LEFT_CASTLE: Move =
-    Move {
-        source: Position {column: 4, row: 0},
-        destination: Position {column: 2, row: 0},
-        extra_castling_move: WHITE_LEFT_ROOK_MOVE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None, 
-    };
-
-const WHITE_RIGHT_ROOK_MOVE: Option<ExtraCastlingMove> =
-    Some(ExtraCastlingMove {
-        source: Position {column: 7, row: 0},
-        destination: Position {column: 5, row: 0},
-        });
-static WHITE_RIGHT_CASTLE: Move =
-    Move {
-        source: Position {column: 4, row: 0},
-        destination: Position {column: 6, row: 0},
-        extra_castling_move: WHITE_RIGHT_ROOK_MOVE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None,
-    };
-
-const BLACK_LEFT_ROOK_MOVE: Option<ExtraCastlingMove> =
-    Some(ExtraCastlingMove {
-        source: Position {column: 0, row: 7},
-        destination: Position {column: 3, row: 7},
-    });
-
-static BLACK_LEFT_CASTLE: Move =
-    Move {
-        source: Position {column: 4, row: 7},
-        destination: Position {column: 2, row: 7},
-        extra_castling_move: BLACK_LEFT_ROOK_MOVE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None,
-    };
-
-const BLACK_RIGHT_ROOK_MOVE: Option<ExtraCastlingMove> =
-    Some(ExtraCastlingMove {
-        source: Position {column: 7, row: 7},
-        destination: Position {column: 5, row: 7},
-    });
-static BLACK_RIGHT_CASTLE: Move =
-    Move {
-        source: Position {column: 4, row: 7},
-        destination: Position {column: 6, row: 7},
-        extra_castling_move: BLACK_RIGHT_ROOK_MOVE,
-        enables_en_passant: false,
-        en_passant_target: None,
-        promotion_piece_type: None,
-    };
-
 #[derive(Clone)]
 pub struct GameState {
     pub current_player: Color,
@@ -397,20 +336,23 @@ impl GameState {
                     let left_rook_position = Position { column: 0, row: row };
                     if self.get_piece(&left_rook_position).map_or(false, |piece| piece.can_castle)
                             && self.are_all_empty(&[(1,row), (2,row), (3,row)]) {
-                        possible_moves.push(if piece.color == Color::White {
-                            WHITE_LEFT_CASTLE.clone()
-                        } else {
-                            BLACK_LEFT_CASTLE.clone()
-                        });
+
+                        let rook_move = ExtraCastlingMove {
+                            source: source.clone(),
+                            destination: source.relative(-3, 0),
+                        };
+                        possible_moves.push(
+                            Move::castle(source.relative(-4, 0), source.relative(-1, 0), rook_move));
                     }
 
                     if self.get_piece(&Position { column: 7, row: row}).map_or(false, |piece| piece.can_castle)
                             && self.are_all_empty(&[(5,row), (6,row)]) {
-                        possible_moves.push(if piece.color == Color::White {
-                            WHITE_RIGHT_CASTLE.clone()
-                        } else {
-                            BLACK_RIGHT_CASTLE.clone()
-                        });
+                        let rook_move = ExtraCastlingMove {
+                            source: source.clone(),
+                            destination: source.relative(2, 0),
+                        };
+                        possible_moves.push(
+                            Move::castle(source.relative(3, 0), source.relative(1, 0), rook_move));
                     }
 
                     // Remove moves that would place the king into check.
