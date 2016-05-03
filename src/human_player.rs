@@ -3,7 +3,7 @@ use std::io;
 use piece_move::Move;
 use game_state::GameState;
 
-pub fn human_player(_: &GameState, moves: &Vec<Move>) -> Option<Move> {
+pub fn human_player(_: &GameState, moves: &Vec<Move>) -> Move {
     loop {
         println!("Enter a move:");
         let mut input = String::new();
@@ -16,7 +16,7 @@ pub fn human_player(_: &GameState, moves: &Vec<Move>) -> Option<Move> {
                                         && m.destination == player_move.destination) {
                     None => println!("Illegal move"),
                     Some(result) => {
-                        return Some(result.clone());
+                        return result.clone();
                     }
                 }
             },

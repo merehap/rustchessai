@@ -9,15 +9,15 @@ use game_state::EndState;
 
 const MAX_DEPTH: u8 = 4;
 
-pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Option<Move> {
+pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
 }
 
-pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Option<Move> {
+pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
 }
 
-pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Option<Move> {
+pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
 }
 
@@ -26,7 +26,11 @@ fn computer_player(
         moves: &Vec<Move>,
         name: String,
         eval_function: Box<Fn(&GameState) -> i16>)
-        -> Option<Move> {
+        -> Move {
+
+    if moves.len() == 0 {
+        panic!("No possible moves passed to computer player!");
+    }
 
     let move_scores = determine_best_moves(&initial_game_state, moves, &eval_function, MAX_DEPTH).0;
     if let [(ref best_move, _), ..] = move_scores.as_slice() {
@@ -40,11 +44,10 @@ fn computer_player(
                        text.push_str(format!("{}: {}, ", piece_move.simple_format(), score).as_str());
                        text
                  }));
-        return Some(best_move.clone());
+        return best_move.clone();
     }
 
-    println!("No moves returned by player {:?}", initial_game_state.current_player);
-    None
+    panic!(format!("No moves returned by player {:?}", initial_game_state.current_player));
 }
 
 // Returns a list of pairs of moves with scores, sorted from best to worst.

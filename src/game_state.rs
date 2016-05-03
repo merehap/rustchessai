@@ -66,20 +66,17 @@ impl GameState {
     pub fn play_turn(
             &mut self,
             player_brain:
-                &Box<Fn(&GameState, &Vec<Move>) -> Option<Move>>) -> bool {
+                &Box<Fn(&GameState, &Vec<Move>) -> Move>) -> PlayerState {
 
         let game_state = self.clone();
-        let moves = game_state.get_player_moves();
-        
-        if let Some(player_move) = player_brain(&game_state, &moves) {
-            println!("{:?} played {}",
-                game_state.current_player,
-                player_move.simple_format());
+        let player_state = game_state.get_player_moves();
+        if let PlayerState::CanMove(moves) = player_state.clone() {
+            let player_move = player_brain(&game_state, &moves);
+            println!("{:?} played {}", game_state.current_player, player_move.simple_format());
             self.move_piece(&moves, &player_move);
-            true
-        } else {
-            false
         }
+
+        player_state
     }
 
     pub fn get_all_pieces(&self) -> Vec<Piece> {
@@ -180,21 +177,30 @@ impl GameState {
         chars.into_iter().collect::<String>()
     }
 
-    pub fn get_player_moves(&self) -> Vec<Move> {
+    pub fn get_player_moves(&self) -> PlayerState {
         let (moves, king_info) = self.get_player_moves_base(self.current_player);
         match king_info {
-            // No king was found on the board.
-            None => vec![],
+            None => panic!("No king found on the board for {:?}", self.current_player),
             Some((source, true)) => {
-                moves.clone().into_iter().filter(|piece_move| {
+                let result = moves.clone().into_iter().filter(|piece_move| {
                     let mut game_state = self.clone();
                     game_state.move_piece(&moves, &piece_move);
                     let (opponent_moves, _) = game_state.get_player_moves_base(
                         game_state.current_player);
                     !opponent_moves.iter().any(|opponent_move| opponent_move.destination == source)
-                }).collect::<Vec<_>>()
+                }).collect::<Vec<_>>();
+
+                if result.is_empty() {
+                    PlayerState::Checkmate
+                } else {
+                    PlayerState::CanMove(result)
+                }
             },
-            _ => moves,
+            _ => if moves.is_empty() {
+                PlayerState::Stalemate
+            } else {
+                PlayerState::CanMove(moves)
+            },
         }
     }
 
@@ -354,16 +360,15 @@ impl GameState {
                         possible_moves.push(
                             Move::castle(source.clone(), source.relative(2, 0), rook_move));
                     }
-
-                    // Remove moves that would place the king into check.
-                    moves.append(&mut possible_moves.into_iter()
-                            .filter(|m| !self.previous_player_dests.contains(&m.destination))
-                            .collect::<Vec<_>>());
-
-
-                    // Note the king's position and if it is in check.
-                    king_info = Some((source.clone(), self.previous_player_dests.contains(&source)));
                 }
+                
+                // Remove moves that would place the king into check.
+                moves.append(&mut possible_moves.into_iter()
+                        .filter(|m| !self.previous_player_dests.contains(&m.destination))
+                        .collect::<Vec<_>>());
+
+                // Note the king's position and if it is in check.
+                king_info = Some((source.clone(), self.previous_player_dests.contains(&source)));
             },
         }
 
@@ -536,3 +541,11 @@ impl Color {
         }
     }
 }
+
+#[derive(Clone)]
+pub enum PlayerState {
+    CanMove(Vec<Move>),
+    Checkmate,
+    Stalemate,
+}
+

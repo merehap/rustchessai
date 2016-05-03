@@ -10,6 +10,7 @@ mod computer_player;
 use std::collections::HashMap;
 
 use game_state::GameState;
+use game_state::PlayerState;
 use human_player::human_player;
 use computer_player::piece_score_comp;
 use computer_player::max_moves_comp;
@@ -17,7 +18,7 @@ use computer_player::max_spaces_comp;
 use piece_move::Move;
 
 fn main() {
-    let mut players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Option<Move>>> = HashMap::new();
+    let mut players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>> = HashMap::new();
 
     players.insert("human".to_owned(), Box::new(human_player));
     players.insert("piece_score".to_owned(), Box::new(piece_score_comp));
@@ -40,15 +41,29 @@ fn main() {
 
     loop {
         println!("{}", game_state.format());
-        if !game_state.play_turn(player_1) {
-            println!("Black won!");
-            return;
-        }
+        match game_state.play_turn(player_1) {
+            PlayerState::Stalemate => {
+                println!("Draw!");
+                return;
+            },
+            PlayerState::Checkmate => {
+                println!("Black won!");
+                return;
+            },
+            _ => (),
+        };
 
         println!("{}", game_state.format());
-        if !game_state.play_turn(player_2) {
-            println!("White won!");
-            return;
+        match game_state.play_turn(player_2) {
+            PlayerState::Stalemate => {
+                println!("Draw!");
+                return
+            },
+            PlayerState::Checkmate => {
+                println!("White won!");
+                return;
+            },
+            _ => (),
         }
     }
 }
