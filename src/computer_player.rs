@@ -77,7 +77,7 @@ fn determine_best_moves(
     let mut move_scores: Vec<(Move, i16)> = vec![];
     for piece_move in moves {
         let mut game_state = initial_game_state.clone();
-        game_state.move_piece(moves, &piece_move);
+        game_state.move_piece(&piece_move);
 
         let score = if ply > 1 {
             // Determine the other player's best move, returning 0 if there isn't a move,
