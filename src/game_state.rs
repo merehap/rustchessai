@@ -482,13 +482,19 @@ pub struct Piece {
 
 impl Piece {
     fn to_char(&self) -> char {
-        let result = match self.piece_type {
-            PieceType::Pawn   => 'p',
-            PieceType::Knight => 'n',
-            PieceType::Bishop => 'b',
-            PieceType::Rook   => 'r',
-            PieceType::Queen  => 'q',
-            PieceType::King   => 'k',
+        let result = match (self.piece_type, self.color) {
+            (PieceType::Pawn  , Color::White) => '♟',
+            (PieceType::Pawn  , Color::Black) => '♙',
+            (PieceType::Knight, Color::White) => '♞',
+            (PieceType::Knight, Color::Black) => '♘',
+            (PieceType::Bishop, Color::White) => '♝',
+            (PieceType::Bishop, Color::Black) => '♗',
+            (PieceType::Rook  , Color::White) => '♜',
+            (PieceType::Rook  , Color::Black) => '♖',
+            (PieceType::Queen , Color::White) => '♛',
+            (PieceType::Queen , Color::Black) => '♕',
+            (PieceType::King  , Color::White) => '♚',
+            (PieceType::King  , Color::Black) => '♔',
         };
 
         if self.color == Color::White { 
