@@ -10,15 +10,21 @@ use game_state::EndState;
 const MAX_DEPTH: u8 = 4;
 
 pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(), Box::new(max_spaces_eval))
+    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(),
+        Box::new(|&game_state| multi_eval(&game_state,
+            &[(15, &Box::new(piece_scorer)), (3, &Box::new(spaces_scorer))])))
 }
 
 pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(), Box::new(max_moves_eval))
+    computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(),
+        Box::new(|&game_state| multi_eval(&game_state,
+            &[(15, &Box::new(piece_scorer)), (1, &Box::new(moves_scorer))])))
 }
 
 pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(), Box::new(piece_score_eval))
+    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
+        Box::new(|&game_state| multi_eval(&game_state,
+            &[(15, &Box::new(piece_scorer))])))
 }
 
 fn computer_player(
@@ -101,28 +107,37 @@ fn determine_best_moves(
     (move_scores, best_score)
 }
 
-fn max_moves_eval(game_state: &GameState) -> i16 {
-    let piece_score = piece_score_eval(&game_state); 
+fn multi_eval(
+        game_state: &GameState,
+        scorers: &[(i16, &Box<Fn(&GameState, &[Move], &[Move]) -> i16>)]) {
 
-    let move_score = game_state.get_player_moves_without_check(Color::White).len() as i16
-            - game_state.get_player_moves_without_check(Color::Black).len() as i16;
+    let mut score = 0;
 
-    piece_score + move_score as i16
+    let white_moves = game_state.get_player_moves_without_check(Color::White);
+    let black_moves = game_state.get_player_moves_without_check(Color::Black);
+
+    for (weight, scorer) in scorers {
+        if weight != 0 {
+            score += weight * scorer(&game_state, &white_moves, &black_moves);
+        }
+    }
+
+    score
 }
 
-const SPACE_SCORE_MULTIPLIER: i16 = 3;
+fn moves_scorer(_: &GameState, white_moves: &[Move], black_moves: &[Move]) -> i16 {
+    white_moves.len() as i16 - black_moves.len() as i16
+}
 
-fn max_spaces_eval(game_state: &GameState) -> i16 {
-    let piece_score = piece_score_eval(&game_state);
-
+fn spaces_scorer(_: &GameState, white_moves: &[Move], black_moves: &[Move]) -> i16 {
     let mut ownership_grid = [[0; 8]; 8];
 
-    for white_move in game_state.get_player_moves_without_check(Color::White) {
+    for white_move in white_moves {
         let dest = white_move.destination.clone();
         ownership_grid[dest.row as usize][dest.column as usize] += 1;
     }
 
-    for white_move in game_state.get_player_moves_without_check(Color::Black) {
+    for white_move in black_moves {
         let dest = white_move.destination.clone();
         ownership_grid[dest.row as usize][dest.column as usize] -= 1;
     }
@@ -131,18 +146,18 @@ fn max_spaces_eval(game_state: &GameState) -> i16 {
     for col in 0..8 {
         for row in 0..8 {
             match ownership_grid[row][col].cmp(&0) {
-                Ordering::Less => space_score -= SPACE_SCORE_MULTIPLIER,
-                Ordering::Greater => space_score += SPACE_SCORE_MULTIPLIER,
+                Ordering::Less => space_score -= 1,
+                Ordering::Greater => space_score += 1,
                 _ => (),
             }
         }
     }
 
-    piece_score + space_score
+    space_score
 }
 
-fn piece_score_eval(game_state: &GameState) -> i16 {
-    15 * game_state.get_all_pieces().iter().map(|piece| {
+fn piece_scorer(game_state: &GameState, _: &[Move], _: &[Move]) -> i16 {
+    game_state.get_all_pieces().iter().map(|piece| {
         let sign = if piece.color == Color::White { 1 } else { -1 };
         sign * piece_value(&piece.piece_type) as i16
     }).fold(0, |x, y| x + y)
