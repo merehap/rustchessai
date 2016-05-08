@@ -109,7 +109,7 @@ fn determine_best_moves(
 
 fn multi_eval(
         game_state: &GameState,
-        scorers: &[(i16, &Box<Fn(&GameState, &[Move], &[Move]) -> i16>)]) {
+        scorers: &[(i16, &Box<Fn(&GameState, &[Move], &[Move]) -> i16>)]) -> i16 {
 
     let mut score = 0;
 
