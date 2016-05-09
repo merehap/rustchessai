@@ -116,7 +116,7 @@ fn multi_eval(
     let white_moves = game_state.get_player_moves_without_check(Color::White);
     let black_moves = game_state.get_player_moves_without_check(Color::Black);
 
-    for (weight, scorer) in scorers {
+    for &(weight, scorer) in scorers {
         if weight != 0 {
             score += weight * scorer(&game_state, &white_moves, &black_moves);
         }
