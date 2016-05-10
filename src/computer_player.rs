@@ -9,10 +9,10 @@ use game_state::EndState;
 
 const MAX_DEPTH: u8 = 4;
 
-pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(),
+pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
+    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(15, &piece_scorer()), (3, &spaces_scorer())])))
+            &[(15, &piece_scorer())])))
 }
 
 pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
@@ -21,10 +21,16 @@ pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move
             &[(15, &piece_scorer()), (1, &moves_scorer())])))
 }
 
-pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
+pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
+    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(15, &piece_scorer())])))
+            &[(15, &piece_scorer()), (3, &spaces_scorer())])))
+}
+
+pub fn spaces_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
+    computer_player(initial_game_state, &moves, "SPACES MOVES".to_owned(),
+        Box::new(|game_state| multi_eval(game_state,
+            &[(15, &piece_scorer()), (3, &spaces_scorer()), (1, &moves_scorer())])))
 }
 
 fn computer_player(

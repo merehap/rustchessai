@@ -15,15 +15,18 @@ use human_player::human_player;
 use computer_player::piece_score_comp;
 use computer_player::max_moves_comp;
 use computer_player::max_spaces_comp;
+use computer_player::spaces_moves_comp;
 use piece_move::Move;
 
 fn main() {
     let mut players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>> = HashMap::new();
 
+    // TODO Unify name as seen here with the value in computer_player.rs.
     players.insert("human".to_owned(), Box::new(human_player));
     players.insert("piece_score".to_owned(), Box::new(piece_score_comp));
     players.insert("max_moves".to_owned(), Box::new(max_moves_comp));
     players.insert("max_spaces".to_owned(), Box::new(max_spaces_comp));
+    players.insert("spaces_moves".to_owned(), Box::new(spaces_moves_comp));
 
     let stdin = std::io::stdin();
 
