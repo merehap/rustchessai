@@ -9,34 +9,22 @@ use game_state::EndState;
 
 const MAX_DEPTH: u8 = 4;
 
-pub fn piece_scorer_box() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
-    Box::new(piece_scorer)
-}
-
-pub fn spaces_scorer_box() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
-    Box::new(spaces_scorer)
-}
-
-pub fn moves_scorer_box() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
-    Box::new(moves_scorer)
-}
-
 pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(15, &piece_scorer_box()), (3, &spaces_scorer_box())])))
+            &[(15, &piece_scorer()), (3, &spaces_scorer())])))
 }
 
 pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(15, &piece_scorer_box()), (1, &moves_scorer_box())])))
+            &[(15, &piece_scorer()), (1, &moves_scorer())])))
 }
 
 pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(15, &piece_scorer_box())])))
+            &[(15, &piece_scorer())])))
 }
 
 fn computer_player(
@@ -137,42 +125,47 @@ fn multi_eval(
     score
 }
 
-fn moves_scorer(_: &GameState, white_moves: &[Move], black_moves: &[Move]) -> i16 {
-    white_moves.len() as i16 - black_moves.len() as i16
+fn moves_scorer() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
+    Box::new(|_, white_moves, black_moves| white_moves.len() as i16 - black_moves.len() as i16)
 }
 
-fn spaces_scorer(_: &GameState, white_moves: &[Move], black_moves: &[Move]) -> i16 {
-    let mut ownership_grid = [[0; 8]; 8];
+fn spaces_scorer() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
+    Box::new(|_, white_moves, black_moves| {
+        let mut ownership_grid = [[0; 8]; 8];
 
-    for white_move in white_moves {
-        let dest = white_move.destination.clone();
-        ownership_grid[dest.row as usize][dest.column as usize] += 1;
-    }
+        for white_move in white_moves {
+            let dest = white_move.destination.clone();
+            ownership_grid[dest.row as usize][dest.column as usize] += 1;
+        }
 
-    for white_move in black_moves {
-        let dest = white_move.destination.clone();
-        ownership_grid[dest.row as usize][dest.column as usize] -= 1;
-    }
+        for white_move in black_moves {
+            let dest = white_move.destination.clone();
+            ownership_grid[dest.row as usize][dest.column as usize] -= 1;
+        }
 
-    let mut space_score = 0;
-    for col in 0..8 {
-        for row in 0..8 {
-            match ownership_grid[row][col].cmp(&0) {
-                Ordering::Less => space_score -= 1,
-                Ordering::Greater => space_score += 1,
-                _ => (),
+        let mut space_score = 0;
+        for col in 0..8 {
+            for row in 0..8 {
+                match ownership_grid[row][col].cmp(&0) {
+                    Ordering::Less => space_score -= 1,
+                    Ordering::Greater => space_score += 1,
+                    _ => (),
+                }
             }
         }
-    }
 
-    space_score
+        space_score
+    })
 }
 
-fn piece_scorer(game_state: &GameState, _: &[Move], _: &[Move]) -> i16 {
-    game_state.get_all_pieces().iter().map(|piece| {
-        let sign = if piece.color == Color::White { 1 } else { -1 };
-        sign * piece_value(&piece.piece_type) as i16
-    }).fold(0, |x, y| x + y)
+// TODO: Instead of iterating over the entire board to get all pieces, just use the move lists.
+fn piece_scorer() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
+    Box::new(|game_state, _, _| {
+        game_state.get_all_pieces().iter().map(|piece| {
+            let sign = if piece.color == Color::White { 1 } else { -1 };
+            sign * piece_value(&piece.piece_type) as i16
+        }).fold(0, |x, y| x + y)
+    })
 }
 
 fn piece_value(piece_type: &PieceType) -> i8 {
