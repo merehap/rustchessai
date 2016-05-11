@@ -1,4 +1,6 @@
 use std::cmp::Ordering;
+use std::i16;
+use std::cmp;
 
 use piece_type::PieceType;
 use piece_type::PieceType::*;
@@ -7,7 +9,7 @@ use game_state::GameState;
 use game_state::Color;
 use game_state::EndState;
 
-const MAX_DEPTH: u8 = 4;
+const MAX_DEPTH: u8 = 5;
 
 pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
@@ -30,7 +32,7 @@ pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Mov
 pub fn spaces_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "SPACES MOVES".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(15, &piece_scorer()), (3, &spaces_scorer()), (1, &moves_scorer())])))
+            &[(25, &piece_scorer()), (8, &spaces_scorer()), (1, &moves_scorer())])))
 }
 
 fn computer_player(
@@ -44,7 +46,8 @@ fn computer_player(
         panic!("No possible moves passed to computer player!");
     }
 
-    let move_scores = determine_best_moves(&initial_game_state, moves, &eval_function, MAX_DEPTH).0;
+    let move_scores = determine_best_moves(
+        &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, MAX_DEPTH).0;
     if let [(ref best_move, _), ..] = move_scores.as_slice() {
         println!("Total moves possible: {}", move_scores.len());
         println!("Best moves according to the {} AI ({:?}):\n{}",
@@ -67,6 +70,8 @@ fn determine_best_moves(
         initial_game_state: &GameState,
         moves: &Vec<Move>,
         eval_function: &Box<Fn(&GameState) -> i16>,
+        mut alpha: i16,
+        mut beta: i16,
         ply: u8)
         -> (Vec<(Move, i16)>, i16) {
 
@@ -92,10 +97,9 @@ fn determine_best_moves(
         game_state.move_piece(&piece_move);
 
         let score = if ply > 1 {
-            // Determine the other player's best move, returning 0 if there isn't a move,
-            // indicating stalemate.
+            // Determine the other player's best move
             let next_moves = game_state.get_player_moves_without_check(game_state.current_player);
-            match determine_best_moves(&game_state, &next_moves, eval_function, ply - 1) {
+            match determine_best_moves(&game_state, &next_moves, eval_function, alpha, beta, ply - 1) {
                 (_, score) => score,
             }
         } else {
@@ -103,7 +107,16 @@ fn determine_best_moves(
             eval_function(&game_state)
         };
 
+        if current_player == Color::White {
+            alpha = cmp::max(alpha, score);
+        } else {
+            beta = cmp::min(beta, score);
+        }
+
         move_scores.push((piece_move.clone(), score));
+        if beta <= alpha {
+            break;
+        }
     }
 
     move_scores.sort_by(|&(_, score0), &(_, score1)|
