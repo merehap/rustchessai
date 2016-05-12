@@ -32,7 +32,7 @@ pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Mov
 pub fn spaces_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "SPACES MOVES".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(25, &piece_scorer()), (8, &spaces_scorer()), (1, &moves_scorer())])))
+            &[(35, &piece_scorer()), (7, &spaces_scorer()), (1, &moves_scorer())])))
 }
 
 fn computer_player(
@@ -91,8 +91,19 @@ fn determine_best_moves(
 
     let current_player = initial_game_state.current_player;
 
+    let ordered_moves = if ply > 1 {
+        // Improve the ordering of moves so that alpha beta pruning is more efficient.
+         determine_best_moves(&initial_game_state, &moves, &eval_function, -1000, 1000, 1)
+            .0
+            .into_iter()
+            .map(|(m, _)| m)
+            .collect::<Vec<_>>()
+    } else {
+        moves.clone()
+    };
+
     let mut move_scores: Vec<(Move, i16)> = vec![];
-    for piece_move in moves {
+    for piece_move in ordered_moves {
         let mut game_state = initial_game_state.clone();
         game_state.move_piece(&piece_move);
 
