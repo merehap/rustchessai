@@ -18,18 +18,43 @@ use computer_player::max_spaces_comp;
 use computer_player::spaces_moves_comp;
 use piece_move::Move;
 
+// TODO Determine this from the players HashMap.
+const AI_COUNT: usize = 4;
+
 fn main() {
     let mut players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>> = HashMap::new();
 
     // TODO Unify name as seen here with the value in computer_player.rs.
-    players.insert("human".to_owned(), Box::new(human_player));
     players.insert("piece_score".to_owned(), Box::new(piece_score_comp));
     players.insert("max_moves".to_owned(), Box::new(max_moves_comp));
     players.insert("max_spaces".to_owned(), Box::new(max_spaces_comp));
     players.insert("spaces_moves".to_owned(), Box::new(spaces_moves_comp));
 
-    let stdin = std::io::stdin();
+    let mut modes = HashMap::new();
+    modes.insert("single".to_owned(), GameMode::SingleGame);
+    modes.insert("AIs".to_owned(), GameMode::AIRoundRobin);
 
+    let stdin = std::io::stdin();
+    let mut mode_text = String::new();
+    println!("Mode? Options: {:?}", modes.keys().collect::<Vec<_>>());
+    stdin.read_line(&mut mode_text).unwrap();
+    let ref mode = modes[&mode_text.trim().to_owned()]; 
+    match *mode {
+        GameMode::SingleGame => {
+            players.insert("human".to_owned(), Box::new(human_player));
+            play_single_game(players)
+        },
+        GameMode::AIRoundRobin => play_ai_round_robin(players),
+    }
+}
+
+enum GameMode {
+    SingleGame,
+    AIRoundRobin,
+}
+
+fn play_single_game(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>>) {
+    let stdin = std::io::stdin();
     let mut player_1_text = String::new();
     println!("What should player 1 be? Options: {:?}", players.keys().collect::<Vec<_>>());
     stdin.read_line(&mut player_1_text).unwrap();
@@ -43,6 +68,39 @@ fn main() {
     let ref player_2 = players[&player_2_text.trim().to_owned()];
     
     play_game(player_1, player_2);
+}
+
+fn play_ai_round_robin(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>>) {
+    let mut results = [[0f32; AI_COUNT]; AI_COUNT];
+    for i in 0..AI_COUNT {
+        for j in 0..AI_COUNT {
+            let ref white = players[players.keys().collect::<Vec<_>>()[i]];
+            let ref black = players[players.keys().collect::<Vec<_>>()[j]];
+            results[i][j] += match play_game(&white, &black) {
+                GameResult::WhiteWon => 1f32,
+                GameResult::BlackWon => -1f32,
+                GameResult::Draw     => 0f32,
+            };
+        }
+    }
+
+    let width = 16;
+
+    print!("{empty:>width$}", empty="", width=width);
+    for j in 0..AI_COUNT {
+        print!("{column:>width$}", column=players.keys().collect::<Vec<_>>()[j], width=width);
+    }
+
+    println!("");
+
+    for i in 0..AI_COUNT {
+        print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[i], width=width);
+        for j in 0..AI_COUNT {
+            print!("{cell:>width$}", cell=results[i][j] / AI_COUNT as f32, width=width);
+        }
+
+        println!("");
+    }
 }
 
 fn play_game(
