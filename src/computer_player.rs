@@ -10,6 +10,7 @@ use game_state::Color;
 use game_state::EndState;
 
 const MAX_DEPTH: u8 = 5;
+const MAX_SCORE: i16 = 10000;
 
 pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
@@ -32,7 +33,7 @@ pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Mov
 pub fn spaces_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
     computer_player(initial_game_state, &moves, "SPACES MOVES".to_owned(),
         Box::new(|game_state| multi_eval(game_state,
-            &[(35, &piece_scorer()), (7, &spaces_scorer()), (1, &moves_scorer())])))
+            &[(70, &piece_scorer()), (7, &spaces_scorer()), (1, &moves_scorer())])))
 }
 
 fn computer_player(
@@ -83,7 +84,7 @@ fn determine_best_moves(
         EndState::NotEnded => (),
         EndState::Win(_) => return (
             vec![],
-            1000 * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
+            MAX_SCORE * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
         EndState::Stalemate => return (
             moves.iter().zip([0].iter().cycle()).map(|(s, c)| (s.clone(), c.clone())).collect::<Vec<_>>(),
             0),
@@ -93,7 +94,7 @@ fn determine_best_moves(
 
     let ordered_moves = if ply > 1 {
         // Improve the ordering of moves so that alpha beta pruning is more efficient.
-         determine_best_moves(&initial_game_state, &moves, &eval_function, -1000, 1000, 1)
+        determine_best_moves(&initial_game_state, &moves, &eval_function, -MAX_SCORE, MAX_SCORE, 1)
             .0
             .into_iter()
             .map(|(m, _)| m)
@@ -188,7 +189,6 @@ fn spaces_scorer() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
     })
 }
 
-// TODO: Instead of iterating over the entire board to get all pieces, just use the move lists.
 fn piece_scorer() -> Box<Fn(&GameState, &[Move], &[Move]) -> i16> {
     Box::new(|game_state, _, _| {
         game_state.get_all_pieces().iter().map(|piece| {

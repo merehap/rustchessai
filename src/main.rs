@@ -41,34 +41,65 @@ fn main() {
     stdin.read_line(&mut player_2_text).unwrap();
     println!("{} player chosen.", &player_2_text.trim());
     let ref player_2 = players[&player_2_text.trim().to_owned()];
+    
+    play_game(player_1, player_2);
+}
+
+fn play_game(
+        white: &Box<Fn(&GameState, &Vec<Move>) -> Move>,
+        black: &Box<Fn(&GameState, &Vec<Move>) -> Move>) -> GameResult {
 
     let mut game_state = GameState::opening_state();
+    let mut turn = 1;
+    let game_result;
 
     loop {
         println!("{}", game_state.format());
-        match game_state.play_turn(player_1) {
+        match game_state.play_turn(white) {
             PlayerState::Stalemate => {
+                game_result = GameResult::Draw; 
                 println!("Draw!");
-                return;
+                break;
             },
             PlayerState::Checkmate => {
+                game_result = GameResult::BlackWon; 
                 println!("Black won!");
-                return;
+                break;
             },
             _ => (),
         };
 
         println!("{}", game_state.format());
-        match game_state.play_turn(player_2) {
+        match game_state.play_turn(black) {
             PlayerState::Stalemate => {
+                game_result = GameResult::Draw; 
                 println!("Draw!");
-                return
+                break; 
             },
             PlayerState::Checkmate => {
+                game_result = GameResult::WhiteWon; 
                 println!("White won!");
-                return;
+                break;
             },
             _ => (),
         }
+
+        // TODO Replace this with the 50 moves rule.
+        if turn == 300 {
+            game_result = GameResult::Draw;
+            println!("Draw by hitting max moves!");
+            break;
+        }
+
+        turn += 1;
     }
+
+    println!("Game ended on turn {} .", turn);
+    game_result
+}
+
+enum GameResult {
+    WhiteWon,
+    BlackWon,
+    Draw,
 }
