@@ -96,7 +96,7 @@ fn play_ai_round_robin(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -
     for i in 0..AI_COUNT {
         print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[i], width=width);
         for j in 0..AI_COUNT {
-            print!("{cell:>width$}", cell=results[i][j] / AI_COUNT as f32, width=width);
+            print!("{cell:>width$}", cell=results[i][j], width=width);
         }
 
         println!("");
@@ -112,6 +112,7 @@ fn play_game(
     let game_result;
 
     loop {
+        println!("Turn {}", turn);
         println!("{}", game_state.format());
         match game_state.play_turn(white) {
             PlayerState::Stalemate => {
@@ -143,7 +144,7 @@ fn play_game(
         }
 
         // TODO Replace this with the 50 moves rule.
-        if turn == 300 {
+        if turn == 200 {
             game_result = GameResult::Draw;
             println!("Draw by hitting max moves!");
             break;
