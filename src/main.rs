@@ -44,7 +44,12 @@ fn main() {
             players.insert("human".to_owned(), Box::new(human_player));
             play_single_game(players)
         },
-        GameMode::AIRoundRobin => play_ai_round_robin(players),
+        GameMode::AIRoundRobin => {
+            println!("How many rounds per match?");
+            let mut rounds_per_match = String::new();
+            stdin.read_line(&mut rounds_per_match).unwrap();
+            play_ai_round_robin(players, rounds_per_match.trim().parse().unwrap());
+        }
     }
 }
 
@@ -70,17 +75,22 @@ fn play_single_game(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> M
     play_game(player_1, player_2);
 }
 
-fn play_ai_round_robin(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>>) {
+fn play_ai_round_robin(
+        players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>>,
+        rounds_per_match: u8) {
+
     let mut results = [[0f32; AI_COUNT]; AI_COUNT];
-    for i in 0..AI_COUNT {
-        for j in 0..AI_COUNT {
-            let ref white = players[players.keys().collect::<Vec<_>>()[i]];
-            let ref black = players[players.keys().collect::<Vec<_>>()[j]];
-            results[i][j] += match play_game(&white, &black) {
-                GameResult::WhiteWon => 1f32,
-                GameResult::BlackWon => -1f32,
-                GameResult::Draw     => 0f32,
-            };
+    for _ in 0..rounds_per_match {
+        for i in 0..AI_COUNT {
+            for j in 0..AI_COUNT {
+                let ref white = players[players.keys().collect::<Vec<_>>()[i]];
+                let ref black = players[players.keys().collect::<Vec<_>>()[j]];
+                results[i][j] += match play_game(&white, &black) {
+                    GameResult::WhiteWon => 1f32,
+                    GameResult::BlackWon => -1f32,
+                    GameResult::Draw     => 0f32,
+                };
+            }
         }
     }
 
@@ -96,7 +106,7 @@ fn play_ai_round_robin(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -
     for i in 0..AI_COUNT {
         print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[i], width=width);
         for j in 0..AI_COUNT {
-            print!("{cell:>width$}", cell=results[i][j], width=width);
+            print!("{cell:>width$.2}", cell=results[i][j] / rounds_per_match as f32, width=width);
         }
 
         println!("");
