@@ -199,8 +199,14 @@ impl GameState {
     }
 
     fn is_in_check(&self, player: Color) -> bool {
-        let king_position = self.find_piece(PieceType::King, player).expect(
-            &format!("No king on the board for {:?}!", player));
+        let king_position = match self.find_piece(PieceType::King, player) {
+            Some(kp) => kp,
+            None => {
+                println!("SPECIAL");
+                println!("{}", self.format());
+                panic!(format!("No king on the board for {:?}!", player));
+            }
+        };
 
         self.get_player_moves_without_check(player.opposite()).iter()
             .any(|opponent_move| opponent_move.destination == king_position)
@@ -280,20 +286,24 @@ impl GameState {
 
                 // Pawns can take pieces on diagonals immediately in front of them.
                 if let Some(left_attack) = self.relative(&source, -1, direction) {
-                    if left_attack.row == promotion_row {
-                        // TODO: Allow promotion pieces other than the queen.
-                        moves.push(Move::promotion(source.clone(), left_attack, PieceType::Queen));
-                    } else if self.get_occupation_status(&piece, &left_attack) == OccupationStatus::Enemy {
-                        moves.push(Move::simple(source.clone(), left_attack));
+                    if self.get_occupation_status(&piece, &left_attack) == OccupationStatus::Enemy {
+                        if left_attack.row == promotion_row {
+                            // TODO: Allow promotion pieces other than the queen.
+                            moves.push(Move::promotion(source.clone(), left_attack, PieceType::Queen));
+                        } else {
+                            moves.push(Move::simple(source.clone(), left_attack));
+                        }
                     }
                 }
 
                 if let Some(right_attack) = self.relative(&source, 1, direction) {
-                    if right_attack.row == promotion_row {
-                        // TODO: Allow promotion pieces other than the queen.
-                        moves.push(Move::promotion(source.clone(), right_attack, PieceType::Queen));
-                    } else if self.get_occupation_status(&piece, &right_attack) == OccupationStatus::Enemy {
-                        moves.push(Move::simple(source.clone(), right_attack));
+                    if self.get_occupation_status(&piece, &right_attack) == OccupationStatus::Enemy {
+                        if right_attack.row == promotion_row {
+                            // TODO: Allow promotion pieces other than the queen.
+                            moves.push(Move::promotion(source.clone(), right_attack, PieceType::Queen));
+                        } else {
+                            moves.push(Move::simple(source.clone(), right_attack));
+                        }
                     }
                 }
 
