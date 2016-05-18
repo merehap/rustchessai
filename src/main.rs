@@ -1,5 +1,7 @@
 #![feature(advanced_slice_patterns, slice_patterns)]
 
+extern crate rand;
+
 mod piece_type;
 mod position;
 mod piece_move;
@@ -81,8 +83,8 @@ fn play_ai_round_robin(
 
     let mut results = [[0f32; AI_COUNT]; AI_COUNT];
     for _ in 0..rounds_per_match {
-        for j in 0..AI_COUNT {
-            for i in 0..AI_COUNT {
+        for i in 0..AI_COUNT {
+            for j in 0..AI_COUNT {
                 let ref white = players[players.keys().collect::<Vec<_>>()[i]];
                 let ref black = players[players.keys().collect::<Vec<_>>()[j]];
                 results[i][j] += match play_game(&white, &black) {
@@ -100,8 +102,8 @@ fn play_ai_round_robin(
     // AI ranking as white and black
     let width = 16;
 
-    println!("{white_text:>width$}", white_text="|| White Player ->", width=2*width);
-    print!("{black_text:>width$}", black_text="Black Player ||", width=width);
+    println!("{white_text:>width$}", white_text="WHITE PLAYER", width=3*width);
+    print!("{empty:>width$}", empty="", width=width);
     for j in 0..AI_COUNT {
         print!("{column:>width$}", column=players.keys().collect::<Vec<_>>()[j], width=width);
     }

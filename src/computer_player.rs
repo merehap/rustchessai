@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 use std::i16;
 use std::cmp;
+use rand;
+use rand::Rng;
 
 use piece_type::PieceType;
 use piece_type::PieceType::*;
@@ -49,7 +51,11 @@ fn computer_player(
 
     let move_scores = determine_best_moves(
         &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, MAX_DEPTH).0;
-    if let [(ref best_move, _), ..] = move_scores.as_slice() {
+    if let [(_, best_score), ..] = move_scores.as_slice() {
+        let best_moves = move_scores.clone().into_iter()
+            .take_while(|&(_, score)| score == best_score)
+            .map(|(m, _)| m)
+            .collect::<Vec<_>>();
         println!("Total moves possible: {}", move_scores.len());
         println!("Best moves according to the {} AI ({:?}):\n{}",
             name,
@@ -60,7 +66,9 @@ fn computer_player(
                        text.push_str(format!("{}: {}, ", piece_move.simple_format(), score).as_str());
                        text
                  }));
-        return best_move.clone();
+
+        let mut rng = rand::thread_rng();
+        return best_moves[rng.gen_range(0, best_moves.len()) as usize].clone();
     }
 
     panic!(format!("No moves returned by player {:?}", initial_game_state.current_player));

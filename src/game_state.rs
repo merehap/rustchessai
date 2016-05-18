@@ -262,23 +262,25 @@ impl GameState {
         
         match piece.piece_type {
             PieceType::Pawn => {
-
                 let (direction, start_row, promotion_row) = match piece.color {
                     Color::White => ( 1, 1, 7),
-                    Color::Black => (-1, 6, 0), 
+                    Color::Black => (-1, 6, 0),
                 };
                 
                 if let Some(forward_one) = self.relative(&source, 0, direction) {
-                    if forward_one.row == promotion_row {
-                        // TODO: Allow promotion pieces other than the queen.
-                        moves.push(Move::promotion(source.clone(), forward_one, PieceType::Queen));
-                    } else if self.get_occupation_status(&piece, &forward_one) == OccupationStatus::Empty {
-                        moves.push(Move::simple(source.clone(), forward_one));
-                        if let Some(forward_two) = self.relative(source, 0, 2 * direction) {
-                            // Pawns can move forward only one unless they are in their starting row.
-                            if source.row == start_row && self.get_occupation_status(&piece, &forward_two)
-                                    == OccupationStatus::Empty {
-                                moves.push(Move::en_passant_enabler(source.clone(), forward_two));
+                    if self.get_occupation_status(&piece, &forward_one) == OccupationStatus::Empty {
+                        if forward_one.row == promotion_row {
+                            // TODO: Allow promotion pieces other than the queen.
+                            moves.push(Move::promotion(source.clone(), forward_one, PieceType::Queen));
+                        } else {
+                            moves.push(Move::simple(source.clone(), forward_one));
+                            if let Some(forward_two) = self.relative(source, 0, 2 * direction) {
+                                // Pawns can move forward only one unless they are in their starting row.
+                                if source.row == start_row &&
+                                    self.get_occupation_status(&piece, &forward_two)
+                                        == OccupationStatus::Empty {
+                                    moves.push(Move::en_passant_enabler(source.clone(), forward_two));
+                                }
                             }
                         }
                     }
