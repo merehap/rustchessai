@@ -102,7 +102,7 @@ fn play_ai_round_robin(
     // AI ranking as white and black
     let width = 16;
 
-    println!("{white_text:>width$}", white_text="WHITE PLAYER", width=3*width);
+    println!("{white_text:>width$}", white_text="WHITE PLAYER", width=3*width+width/2);
     print!("{empty:>width$}", empty="", width=width);
     for j in 0..AI_COUNT {
         print!("{column:>width$}", column=players.keys().collect::<Vec<_>>()[j], width=width);
@@ -110,9 +110,9 @@ fn play_ai_round_robin(
 
     println!("");
 
-    for i in 0..AI_COUNT {
-        print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[i], width=width);
-        for j in 0..AI_COUNT {
+    for j in 0..AI_COUNT {
+        print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[j], width=width);
+        for i in 0..AI_COUNT {
             print!("{cell:>width$.2}", cell=results[i][j] / rounds_per_match as f32, width=width);
         }
 
