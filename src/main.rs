@@ -104,12 +104,11 @@ fn play_ai_round_robin(
 
     println!("{white_text:>width$}", white_text="WHITE PLAYER", width=3*width+width/2);
     print!("{empty:>width$}", empty="", width=width);
-    for j in 0..AI_COUNT {
-        print!("{column:>width$}", column=players.keys().collect::<Vec<_>>()[j], width=width);
+    for i in 0..AI_COUNT {
+        print!("{column:>width$}", column=players.keys().collect::<Vec<_>>()[i], width=width);
     }
 
     println!("");
-
     for j in 0..AI_COUNT {
         print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[j], width=width);
         for i in 0..AI_COUNT {
@@ -118,6 +117,19 @@ fn play_ai_round_robin(
 
         println!("");
     }
+
+    println!("{empty:>width$}", empty="", width=width*(AI_COUNT+1));
+    print!("{text:>width$}", text="CUMULATIVE", width=width);
+    for i in 0..AI_COUNT {
+        let mut sum = 0f32;
+        for j in 0..AI_COUNT {
+            sum += results[i][j];
+        }
+
+        print!("{cell:>width$}", cell=sum as f32 / AI_COUNT as f32, width=width);
+    }
+
+    println!("");
 }
 
 fn play_game(
