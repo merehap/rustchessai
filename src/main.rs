@@ -85,6 +85,10 @@ fn play_ai_round_robin(
     for _ in 0..rounds_per_match {
         for i in 0..AI_COUNT {
             for j in 0..AI_COUNT {
+                if i == j {
+                    continue;
+                }
+
                 let ref white = players[players.keys().collect::<Vec<_>>()[i]];
                 let ref black = players[players.keys().collect::<Vec<_>>()[j]];
                 results[i][j] += match play_game(&white, &black) {
@@ -112,7 +116,11 @@ fn play_ai_round_robin(
     for j in 0..AI_COUNT {
         print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[j], width=width);
         for i in 0..AI_COUNT {
-            print!("{cell:>width$.2}", cell=results[i][j] / rounds_per_match as f32, width=width);
+            if i == j {
+                print!("{cell:>width$}", cell="-", width=width);
+            } else {
+                print!("{cell:>width$.2}", cell=results[i][j] / rounds_per_match as f32, width=width);
+            }
         }
 
         println!("");
@@ -126,7 +134,7 @@ fn play_ai_round_robin(
             sum += results[i][j];
         }
 
-        print!("{cell:>width$}", cell=sum as f32 / AI_COUNT as f32, width=width);
+        print!("{cell:>width$}", cell=sum as f32 / (AI_COUNT - 1) as f32, width=width);
     }
 
     println!("");
