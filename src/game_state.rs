@@ -66,12 +66,13 @@ impl GameState {
     pub fn play_turn(
             &mut self,
             player_brain:
-                &Box<Fn(&GameState, &Vec<Move>) -> Move>) -> PlayerState {
+                &Box<Fn(&GameState, &Vec<Move>, u8) -> Move>,
+            max_ai_depth: &u8) -> PlayerState {
 
         let game_state = self.clone();
         let player_state = game_state.get_player_moves();
         if let PlayerState::CanMove(moves) = player_state.clone() {
-            let player_move = player_brain(&game_state, &moves);
+            let player_move = player_brain(&game_state, &moves, max_ai_depth.clone());
             println!("{:?} played {}", game_state.current_player, player_move.simple_format());
             self.move_piece(&player_move);
         }

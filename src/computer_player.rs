@@ -11,29 +11,28 @@ use game_state::GameState;
 use game_state::Color;
 use game_state::EndState;
 
-const MAX_DEPTH: u8 = 5;
 const MAX_SCORE: i16 = 10000;
 
-pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(),
+pub fn piece_score_comp(initial_game_state: &GameState, moves: &Vec<Move>, max_depth: u8) -> Move {
+    computer_player(initial_game_state, &moves, "PIECE SCORE".to_owned(), max_depth,
         Box::new(|game_state| multi_eval(game_state,
             &[(15, &piece_scorer())])))
 }
 
-pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(),
+pub fn max_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>, max_depth: u8) -> Move {
+    computer_player(initial_game_state, &moves, "MAX MOVES".to_owned(), max_depth,
         Box::new(|game_state| multi_eval(game_state,
             &[(15, &piece_scorer()), (1, &moves_scorer())])))
 }
 
-pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(),
+pub fn max_spaces_comp(initial_game_state: &GameState, moves: &Vec<Move>, max_depth: u8) -> Move {
+    computer_player(initial_game_state, &moves, "MAX SPACES".to_owned(), max_depth,
         Box::new(|game_state| multi_eval(game_state,
             &[(15, &piece_scorer()), (3, &spaces_scorer())])))
 }
 
-pub fn spaces_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>) -> Move {
-    computer_player(initial_game_state, &moves, "SPACES MOVES".to_owned(),
+pub fn spaces_moves_comp(initial_game_state: &GameState, moves: &Vec<Move>, max_depth: u8) -> Move {
+    computer_player(initial_game_state, &moves, "SPACES MOVES".to_owned(), max_depth,
         Box::new(|game_state| multi_eval(game_state,
             &[(70, &piece_scorer()), (7, &spaces_scorer()), (1, &moves_scorer())])))
 }
@@ -42,6 +41,7 @@ fn computer_player(
         initial_game_state: &GameState,
         moves: &Vec<Move>,
         name: String,
+        max_depth: u8,
         eval_function: Box<Fn(&GameState) -> i16>)
         -> Move {
 
@@ -50,7 +50,7 @@ fn computer_player(
     }
 
     let move_scores = determine_best_moves(
-        &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, MAX_DEPTH).0;
+        &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, max_depth).0;
     if let [(_, best_score), ..] = move_scores.as_slice() {
         let best_moves = move_scores.clone().into_iter()
             .take_while(|&(_, score)| score == best_score)

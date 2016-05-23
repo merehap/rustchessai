@@ -24,7 +24,7 @@ use piece_move::Move;
 const AI_COUNT: usize = 4;
 
 fn main() {
-    let mut players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>> = HashMap::new();
+    let mut players: HashMap<String, Box<Fn(&GameState, &Vec<Move>, u8) -> Move>> = HashMap::new();
 
     // TODO Unify name as seen here with the value in computer_player.rs.
     players.insert("piece_score".to_owned(), Box::new(piece_score_comp));
@@ -40,17 +40,23 @@ fn main() {
     let mut mode_text = String::new();
     println!("Mode? Options: {:?}", modes.keys().collect::<Vec<_>>());
     stdin.read_line(&mut mode_text).unwrap();
+
+    let mut max_ai_depth_text = String::new();
+    println!("Max AI Depth?");
+    stdin.read_line(&mut max_ai_depth_text).unwrap();
+    let ref max_ai_depth = max_ai_depth_text.trim().parse().unwrap(); 
+
     let ref mode = modes[&mode_text.trim().to_owned()]; 
     match *mode {
         GameMode::SingleGame => {
             players.insert("human".to_owned(), Box::new(human_player));
-            play_single_game(players)
+            play_single_game(players, max_ai_depth)
         },
         GameMode::AIRoundRobin => {
             println!("How many rounds per match?");
             let mut rounds_per_match = String::new();
             stdin.read_line(&mut rounds_per_match).unwrap();
-            play_ai_round_robin(players, rounds_per_match.trim().parse().unwrap());
+            play_ai_round_robin(players, rounds_per_match.trim().parse().unwrap(), max_ai_depth);
         }
     }
 }
@@ -60,7 +66,10 @@ enum GameMode {
     AIRoundRobin,
 }
 
-fn play_single_game(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>>) {
+fn play_single_game(
+        players: HashMap<String, Box<Fn(&GameState, &Vec<Move>, u8) -> Move>>,
+        max_ai_depth: &u8) {
+
     let stdin = std::io::stdin();
     let mut player_1_text = String::new();
     println!("What should player 1 be? Options: {:?}", players.keys().collect::<Vec<_>>());
@@ -74,12 +83,13 @@ fn play_single_game(players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> M
     println!("{} player chosen.", &player_2_text.trim());
     let ref player_2 = players[&player_2_text.trim().to_owned()];
     
-    play_game(player_1, player_2);
+    play_game(player_1, player_2, max_ai_depth);
 }
 
 fn play_ai_round_robin(
-        players: HashMap<String, Box<Fn(&GameState, &Vec<Move>) -> Move>>,
-        rounds_per_match: u8) {
+        players: HashMap<String, Box<Fn(&GameState, &Vec<Move>, u8) -> Move>>,
+        rounds_per_match: u8,
+        max_ai_depth: &u8) {
 
     let mut results = [[0f32; AI_COUNT]; AI_COUNT];
     for _ in 0..rounds_per_match {
@@ -91,7 +101,7 @@ fn play_ai_round_robin(
 
                 let ref white = players[players.keys().collect::<Vec<_>>()[i]];
                 let ref black = players[players.keys().collect::<Vec<_>>()[j]];
-                results[i][j] += match play_game(&white, &black) {
+                results[i][j] += match play_game(&white, &black, max_ai_depth) {
                     GameResult::WhiteWon => 1f32,
                     GameResult::BlackWon => -1f32,
                     GameResult::Draw     => 0f32,
@@ -141,8 +151,9 @@ fn play_ai_round_robin(
 }
 
 fn play_game(
-        white: &Box<Fn(&GameState, &Vec<Move>) -> Move>,
-        black: &Box<Fn(&GameState, &Vec<Move>) -> Move>) -> GameResult {
+        white: &Box<Fn(&GameState, &Vec<Move>, u8) -> Move>,
+        black: &Box<Fn(&GameState, &Vec<Move>, u8) -> Move>,
+        max_ai_depth: &u8) -> GameResult {
 
     let mut game_state = GameState::opening_state();
     let mut turn = 1;
@@ -151,7 +162,7 @@ fn play_game(
     loop {
         println!("Turn {}", turn);
         println!("{}", game_state.format());
-        match game_state.play_turn(white) {
+        match game_state.play_turn(white, max_ai_depth) {
             PlayerState::Stalemate => {
                 game_result = GameResult::Draw; 
                 println!("Draw!");
@@ -166,7 +177,7 @@ fn play_game(
         };
 
         println!("{}", game_state.format());
-        match game_state.play_turn(black) {
+        match game_state.play_turn(black, max_ai_depth) {
             PlayerState::Stalemate => {
                 game_result = GameResult::Draw; 
                 println!("Draw!");
