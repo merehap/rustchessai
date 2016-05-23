@@ -144,7 +144,9 @@ fn play_ai_round_robin(
             sum += results[i][j];
         }
 
-        print!("{cell:>width$}", cell=sum as f32 / (AI_COUNT - 1) as f32, width=width);
+        print!("{cell:>width$}",
+               cell=sum as f32 / (rounds_per_match as usize * (AI_COUNT - 1)) as f32,
+               width=width);
     }
 
     println!("");
