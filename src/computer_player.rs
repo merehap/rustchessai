@@ -50,7 +50,7 @@ fn computer_player(
     }
 
     let move_scores = determine_best_moves(
-        &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, max_depth).0;
+        &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, max_depth, max_depth).0;
     if let [(_, best_score), ..] = move_scores.as_slice() {
         let best_moves = move_scores.clone().into_iter()
             .take_while(|&(_, score)| score == best_score)
@@ -81,6 +81,7 @@ fn determine_best_moves(
         eval_function: &Box<Fn(&GameState) -> i16>,
         mut alpha: i16,
         mut beta: i16,
+        max_ply: u8,
         ply: u8)
         -> (Vec<(Move, i16)>, i16) {
 
@@ -92,7 +93,10 @@ fn determine_best_moves(
         EndState::NotEnded => (),
         EndState::Win(_) => return (
             vec![],
-            MAX_SCORE * if initial_game_state.current_player == Color::White { -1 } else { 1 }),
+            // In case of a checkmate, favor earlier checkmates by making later ones slightly less
+            // valuable.
+            (MAX_SCORE - max_ply as i16 + ply as i16) *
+                if initial_game_state.current_player == Color::White { -1 } else { 1 }),
         EndState::Stalemate => return (
             moves.iter().zip([0].iter().cycle()).map(|(s, c)| (s.clone(), c.clone())).collect::<Vec<_>>(),
             0),
@@ -102,7 +106,7 @@ fn determine_best_moves(
 
     let ordered_moves = if ply > 1 {
         // Improve the ordering of moves so that alpha beta pruning is more efficient.
-        determine_best_moves(&initial_game_state, &moves, &eval_function, -MAX_SCORE, MAX_SCORE, 1)
+        determine_best_moves(&initial_game_state, &moves, &eval_function, -MAX_SCORE, MAX_SCORE, max_ply, 1)
             .0
             .into_iter()
             .map(|(m, _)| m)
@@ -119,7 +123,8 @@ fn determine_best_moves(
         let score = if ply > 1 {
             // Determine the other player's best move
             let next_moves = game_state.get_player_moves_without_check(game_state.current_player);
-            match determine_best_moves(&game_state, &next_moves, eval_function, alpha, beta, ply - 1) {
+            match determine_best_moves(
+                    &game_state, &next_moves, eval_function, alpha, beta, max_ply, ply - 1) {
                 (_, score) => score,
             }
         } else {
