@@ -199,7 +199,7 @@ impl GameState {
         }
     }
 
-    fn is_in_check(&self, player: Color) -> bool {
+    pub fn is_in_check(&self, player: Color) -> bool {
         let king_position = match self.find_piece(PieceType::King, player) {
             Some(kp) => kp,
             None => {
