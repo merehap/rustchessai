@@ -125,15 +125,20 @@ fn play_ai_round_robin(
     println!("");
     for j in 0..AI_COUNT {
         print!("{row:>width$}", row=players.keys().collect::<Vec<_>>()[j], width=width);
+        let mut sum = 0f32;
         for i in 0..AI_COUNT {
             if i == j {
                 print!("{cell:>width$}", cell="-", width=width);
             } else {
+                sum += results[i][j];
                 print!("{cell:>width$.2}", cell=results[i][j] / rounds_per_match as f32, width=width);
             }
         }
 
-        println!("");
+        // Cumulative sum for the current black player.
+        println!("{cell:>width$.2}",
+                 cell=sum as f32/ (rounds_per_match as usize * (AI_COUNT - 1)) as f32,
+                 width=width);
     }
 
     println!("{empty:>width$}", empty="", width=width*(AI_COUNT+1));
