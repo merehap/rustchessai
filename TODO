@@ -1,0 +1,5 @@
+Fix bug introduced by fixing stalemate situations.
+Genetic algorithms of AI heuristic weights.
+Transposition tables.
+Fix even plys.
+Display expected best move sequence response.
