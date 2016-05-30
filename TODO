@@ -3,3 +3,5 @@ Genetic algorithms of AI heuristic weights.
 Transposition tables.
 Fix even plys.
 Display expected best move sequence response.
+Record wins/draws/losses separately.
+Figure out why so many moves have identical scores (and if that is a bug).
