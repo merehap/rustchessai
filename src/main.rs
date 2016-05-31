@@ -91,7 +91,7 @@ fn play_ai_round_robin(
         rounds_per_match: u8,
         max_ai_depth: &u8) {
 
-    let mut results = [[0f32; AI_COUNT]; AI_COUNT];
+    let mut results = [[(0f32, 0f32, 0f32); AI_COUNT]; AI_COUNT];
     for _ in 0..rounds_per_match {
         for i in 0..AI_COUNT {
             for j in 0..AI_COUNT {
@@ -101,10 +101,10 @@ fn play_ai_round_robin(
 
                 let ref white = players[players.keys().collect::<Vec<_>>()[i]];
                 let ref black = players[players.keys().collect::<Vec<_>>()[j]];
-                results[i][j] += match play_game(&white, &black, max_ai_depth) {
-                    GameResult::WhiteWon => 1f32,
-                    GameResult::BlackWon => -1f32,
-                    GameResult::Draw     => 0f32,
+                match play_game(&white, &black, max_ai_depth) {
+                    GameResult::WhiteWon => results[i][j].0 += 1.0,
+                    GameResult::BlackWon => results[i][j].1 += 1.0,
+                    GameResult::Draw     => results[i][j].2 += 1.0,
                 };
             }
         }
@@ -130,8 +130,9 @@ fn play_ai_round_robin(
             if i == j {
                 print!("{cell:>width$}", cell="-", width=width);
             } else {
-                sum += results[i][j];
-                print!("{cell:>width$.2}", cell=results[i][j] / rounds_per_match as f32, width=width);
+                let cell = (results[i][j].0 - results[i][j].2) / rounds_per_match as f32;
+                sum += cell;
+                print!("{cell:>width$.2}", cell=cell, width=width);
             }
         }
 
@@ -146,7 +147,8 @@ fn play_ai_round_robin(
     for i in 0..AI_COUNT {
         let mut sum = 0f32;
         for j in 0..AI_COUNT {
-            sum += results[i][j];
+            sum += results[i][j].0;
+            sum -= results[i][j].2;
         }
 
         print!("{cell:>width$.2}",
