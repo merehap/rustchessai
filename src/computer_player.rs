@@ -50,7 +50,14 @@ fn computer_player(
     }
 
     let move_scores = determine_best_moves(
-        &initial_game_state, moves, &eval_function, i16::MIN, i16::MAX, max_depth, max_depth).0;
+        None,
+        &initial_game_state,
+        moves,
+        &eval_function,
+        i16::MIN,
+        i16::MAX,
+        max_depth,
+        max_depth).0;
     if let [(_, best_score), ..] = move_scores.as_slice() {
         let best_moves = move_scores.clone().into_iter()
             .take_while(|&(_, score)| score == best_score)
@@ -76,6 +83,7 @@ fn computer_player(
 
 // Returns a list of pairs of moves with scores, sorted from best to worst.
 fn determine_best_moves(
+        previous_game_state: Option<&GameState>,
         initial_game_state: &GameState,
         moves: &Vec<Move>,
         eval_function: &Box<Fn(&GameState) -> i16>,
@@ -108,7 +116,8 @@ fn determine_best_moves(
 
     let ordered_moves = if ply > 1 {
         // Improve the ordering of moves so that alpha beta pruning is more efficient.
-        determine_best_moves(&initial_game_state, &moves, &eval_function, -MAX_SCORE, MAX_SCORE, max_ply, 1)
+        determine_best_moves(
+                None, &initial_game_state, &moves, &eval_function, -MAX_SCORE, MAX_SCORE, max_ply, 1)
             .0
             .into_iter()
             .map(|(m, _)| m)
@@ -126,7 +135,14 @@ fn determine_best_moves(
             // Determine the other player's best move
             let next_moves = game_state.get_player_moves_without_check(game_state.current_player);
             match determine_best_moves(
-                    &game_state, &next_moves, eval_function, alpha, beta, max_ply, ply - 1) {
+                    Some(initial_game_state),
+                    &game_state,
+                    &next_moves,
+                    eval_function,
+                    alpha,
+                    beta,
+                    max_ply,
+                    ply - 1) {
                 (_, score) => score,
             }
         } else {
