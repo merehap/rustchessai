@@ -91,18 +91,14 @@ fn determine_best_moves(
 
     match initial_game_state.get_end_state(&moves) {
         EndState::NotEnded => (),
-        // Even though this is called a win, it could still be a stalemate at this point
         // TODO: Unify checkmate/stalemate handling.
-        EndState::Win(_) => if initial_game_state.is_in_check(initial_game_state.current_player) {
-            return (
-                vec![],
+        EndState::Win(_) => {
+                return (vec![],
                 // In case of a checkmate, favor earlier checkmates by making later ones slightly less
                 // valuable.
                 (MAX_SCORE - max_ply as i16 + ply as i16) *
                     if initial_game_state.current_player == Color::White { -1 } else { 1 })
-            } else {
-                return (vec![], 0)
-            },
+        },
         EndState::Stalemate => return (
             moves.iter().zip([0].iter().cycle()).map(|(s, c)| (s.clone(), c.clone())).collect::<Vec<_>>(),
             0),
