@@ -8,6 +8,7 @@ use piece_type::PieceType;
 use piece_type::PieceType::*;
 use piece_move::Move;
 use game_state::GameState;
+use game_state::PlayerState;
 use game_state::Color;
 use game_state::EndState;
 
@@ -101,11 +102,15 @@ fn determine_best_moves(
         EndState::NotEnded => (),
         // TODO: Unify checkmate/stalemate handling.
         EndState::Win(_) => {
-                return (vec![],
-                // In case of a checkmate, favor earlier checkmates by making later ones slightly less
-                // valuable.
-                (MAX_SCORE - max_ply as i16 + ply as i16) *
-                    if initial_game_state.current_player == Color::White { -1 } else { 1 })
+            // Despite being labeled as a Win, it is possible this was actually a stalemate.
+            match previous_game_state.map(|gs| gs.get_player_moves()) {
+                Some(PlayerState::Stalemate) => return (vec![], 0),
+                _ => return (vec![],
+                    // In case of a checkmate, favor earlier checkmates by making later ones slightly less
+                    // valuable.
+                    (MAX_SCORE - max_ply as i16 + ply as i16) *
+                        if initial_game_state.current_player == Color::White { -1 } else { 1 }),
+            }
         },
         EndState::Stalemate => return (
             moves.iter().zip([0].iter().cycle()).map(|(s, c)| (s.clone(), c.clone())).collect::<Vec<_>>(),
@@ -117,7 +122,14 @@ fn determine_best_moves(
     let ordered_moves = if ply > 1 {
         // Improve the ordering of moves so that alpha beta pruning is more efficient.
         determine_best_moves(
-                None, &initial_game_state, &moves, &eval_function, -MAX_SCORE, MAX_SCORE, max_ply, 1)
+                None,
+                &initial_game_state,
+                &moves,
+                &eval_function,
+                -MAX_SCORE,
+                MAX_SCORE,
+                max_ply,
+                1)
             .0
             .into_iter()
             .map(|(m, _)| m)
